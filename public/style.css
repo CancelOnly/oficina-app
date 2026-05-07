@@ -1,0 +1,449 @@
+/* =========================
+   BASE
+========================= */
+
+body {
+  margin: 0;
+  background: #111;
+  color: white;
+  font-family: Arial;
+  padding-bottom: 80px; /* evita status em cima dos botões */
+}
+
+/* =========================
+   TOPBAR
+========================= */
+
+.topbar {
+  background: #1d1d1d;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #333;
+}
+
+.topbar.active {
+  background: #1f4d2f;
+}
+
+.header-left strong {
+  display: block;
+  font-size: 22px;
+}
+
+.header-left span {
+  color: #ccc;
+}
+
+/* =========================
+   TABS
+========================= */
+
+.tabs {
+  display: flex;
+  background: #1a1a1a;
+}
+
+.tab {
+  flex: 1;
+  border: none;
+  background: #1a1a1a;
+  color: white;
+  padding: 14px;
+  font-size: 15px;
+}
+
+.tab.active {
+  background: #25d366;
+  color: black;
+  font-weight: bold;
+}
+
+/* =========================
+   CONTAINER
+========================= */
+
+.container {
+  padding: 14px;
+}
+
+.aba {
+  display: none;
+}
+
+.aba.active {
+  display: block;
+}
+
+.card {
+  background: #1f1f1f;
+  padding: 18px;
+  border-radius: 12px;
+}
+
+/* =========================
+   INPUTS
+========================= */
+
+input,
+textarea,
+button {
+  width: 100%;
+  box-sizing: border-box;
+  border: none;
+  border-radius: 10px;
+  padding: 10px;
+  margin-top: 10px;
+}
+
+input,
+textarea {
+  background: #2b2b2b;
+  color: white;
+}
+
+button {
+  background: #333;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  width: 100%;
+}
+
+/* =========================
+   SALVAR
+========================= */
+
+.salvar {
+  background: #25d366;
+  color: black;
+}
+
+/* =========================
+   QUICK ACTIONS
+========================= */
+
+.quick-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin-top: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.quick-actions button {
+  flex: 0 0 auto;
+  width: auto;
+  white-space: nowrap;
+
+  padding: 8px 12px;
+  font-size: 12px;
+
+  border-radius: 8px;
+}
+
+/* =========================
+   PEÇAS
+========================= */
+
+.peca-form {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.peca-form input {
+  margin-top: 0;
+}
+
+.peca-form + button {
+  width: 100% !important;
+  padding: 10px;
+  font-size: 13px;
+  background: #444;
+}
+
+/* botão adicionar peça menor */
+.peca-form + button {
+  padding: 8px;
+  font-size: 13px;
+  background: #444;
+}
+
+/* lista */
+#lista_pecas {
+  margin-top: 12px;
+}
+
+/* item */
+.peca-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  background: #1a1a1a;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-top: 6px;
+}
+
+/* texto */
+.peca-item strong {
+  font-size: 13px;
+}
+
+.peca-item span {
+  font-size: 12px;
+  color: #aaa;
+}
+
+/* BOTÃO REMOVER (corrigido) */
+.peca-item button {
+  width: auto !important;
+  min-width: 26px;
+  height: 26px;
+
+  padding: 0 !important;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 12px;
+
+  background: transparent !important;
+  color: #ff4d4d !important;
+  border: 1px solid #ff4d4d !important;
+  border-radius: 6px;
+}
+
+.peca-item button:hover {
+  background: #ff4d4d !important;
+  color: black !important;
+}
+
+/* =========================
+   TOTAL
+========================= */
+
+.pecas-total {
+  margin-top: 12px;
+  padding: 10px;
+  background: #111;
+  border-radius: 8px;
+
+  display: flex;
+  justify-content: space-between;
+}
+
+/* =========================
+   FINANCEIRO
+========================= */
+
+.financeiro-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+/* =========================
+   HISTÓRICO
+========================= */
+
+.servico-item {
+  background: #2a2a2a;
+  padding: 14px;
+  border-radius: 10px;
+  margin-top: 10px;
+}
+
+/* =========================
+   STATUS (FIX OVERLAY BUG)
+========================= */
+
+#status {
+  position: fixed;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+
+  background: #25d366;
+  color: black;
+
+  padding: 12px;
+  border-radius: 10px;
+  text-align: center;
+  font-weight: bold;
+
+  z-index: 9999; /* não fica mais por cima de botão aleatório */
+}
+
+.status-erro {
+  background: #ff4d4d !important;
+}
+
+.status-alerta {
+  background: #ffc107 !important;
+}
+
+/* =========================
+   HISTÓRICO NOVO
+========================= */
+
+.historico-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  margin-bottom: 10px;
+}
+
+.historico-topo strong {
+  font-size: 15px;
+}
+
+.historico-topo span {
+  color: #aaa;
+  font-size: 13px;
+}
+
+.historico-servico {
+  background: #1a1a1a;
+  padding: 12px;
+  border-radius: 8px;
+
+  margin-top: 10px;
+  line-height: 1.4;
+}
+
+.historico-bloco {
+  margin-top: 14px;
+}
+
+.historico-bloco h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #25d366;
+}
+
+.historico-peca {
+  display: flex;
+  justify-content: space-between;
+
+  background: #1a1a1a;
+  padding: 8px 10px;
+  border-radius: 8px;
+
+  margin-top: 6px;
+}
+
+.historico-peca span {
+  color: #ddd;
+}
+
+.historico-valores {
+  margin-top: 16px;
+
+  display: grid;
+  gap: 8px;
+}
+
+.historico-valores div {
+  display: flex;
+  justify-content: space-between;
+
+  background: #1a1a1a;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.historico-total {
+  background: #25d366 !important;
+  color: black;
+  font-weight: bold;
+}
+
+/* =========================
+   HISTÓRICO EXPANSÍVEL
+========================= */
+
+.historico-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  cursor: pointer;
+}
+
+.historico-header p {
+  margin: 4px 0 0;
+  color: #aaa;
+  font-size: 13px;
+}
+
+.historico-header-right {
+  text-align: right;
+}
+
+.historico-header-right span {
+  display: block;
+  margin-top: 4px;
+  color: #25d366;
+}
+
+.historico-body {
+  display: none;
+  margin-top: 14px;
+}
+
+.historico-body.active {
+  display: block;
+}
+
+.historico-servico-box {
+  background: #1a1a1a;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 10px;
+}
+
+.historico-servico-box strong {
+  color: #25d366;
+}
+
+.historico-peca {
+  display: flex;
+  justify-content: space-between;
+
+  margin-top: 8px;
+
+  background: #111;
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.historico-valores {
+  margin-top: 14px;
+
+  display: grid;
+  gap: 8px;
+}
+
+.historico-valores div {
+  display: flex;
+  justify-content: space-between;
+
+  background: #1a1a1a;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.historico-total {
+  background: #25d366 !important;
+  color: black;
+  font-weight: bold;
+}

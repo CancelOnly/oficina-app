@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Oficina</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+
+  <body>
+    <!-- HEADER -->
+    <header class="topbar" id="topbar">
+      <div class="header-left">
+        <strong id="headerPlaca">Nenhum veículo</strong>
+        <span id="headerModelo">---</span>
+      </div>
+
+      <div class="header-right">
+        <span id="headerCliente">---</span>
+
+        <div class="header-phone">
+          <span id="headerTelefone">---</span>
+
+          <button class="mini-whatsapp" onclick="abrirWhatsRapido()">
+            WhatsApp
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ABAS -->
+    <nav class="tabs">
+      <button class="tab active" onclick="trocarAba('buscar')">Buscar</button>
+      <button class="tab" onclick="trocarAba('servico')">Serviço</button>
+      <button class="tab" onclick="trocarAba('historico')">Histórico</button>
+      <button class="tab" onclick="trocarAba('cadastro')">Cadastro</button>
+    </nav>
+
+    <main class="container">
+      <!-- BUSCAR -->
+      <section id="aba-buscar" class="aba active">
+        <div class="card">
+          <h2>Buscar Veículo</h2>
+
+          <input type="text" id="buscar_placa" placeholder="Digite a placa" />
+
+          <button onclick="buscarVeiculo()">Buscar Veículo</button>
+
+          <div id="buscaResultado"></div>
+        </div>
+      </section>
+
+      <!-- SERVIÇO -->
+      <section id="aba-servico" class="aba">
+        <div class="card">
+          <h2>Fechar Serviço</h2>
+
+          <textarea
+            id="servico"
+            rows="4"
+            placeholder="Serviço executado"
+          ></textarea>
+
+          <div class="quick-actions">
+            <button onclick="servicoRapido('Troca de óleo')">Óleo</button>
+            <button onclick="servicoRapido('Revisão geral')">Revisão</button>
+            <button onclick="servicoRapido('Troca de freios')">Freios</button>
+            <button onclick="servicoRapido('Troca de embreagem')">
+              Embreagem
+            </button>
+          </div>
+
+          <h3>Peças Utilizadas</h3>
+
+          <div class="peca-form">
+            <input type="text" id="peca_nome" placeholder="Nome da peça" />
+            <input type="number" id="peca_valor" placeholder="Valor" />
+          </div>
+
+          <button onclick="adicionarPeca()">Adicionar Peça</button>
+
+          <div id="lista_pecas"></div>
+
+          <!-- TOTAL PEÇAS (SEPARADO CORRETAMENTE) -->
+          <div class="pecas-total">
+            <strong>Total Peças:</strong>
+            <span id="valor_pecas_display">R$ 0,00</span>
+          </div>
+
+          <div class="financeiro-grid">
+            <input type="number" id="valor_pecas" placeholder="Peças" />
+            <input
+              type="number"
+              id="valor_maodeobra"
+              placeholder="Mão de obra"
+            />
+          </div>
+
+          <input type="number" id="valor_total" readonly placeholder="Total" />
+
+          <input type="number" id="km" placeholder="KM Atual" />
+
+          <button class="salvar" onclick="fecharServico()">
+            Fechar Serviço
+          </button>
+
+          <button onclick="gerarWhatsApp()">WhatsApp Fechamento</button>
+        </div>
+      </section>
+
+      <!-- HISTÓRICO -->
+      <section id="aba-historico" class="aba">
+        <div class="card">
+          <h2>Histórico</h2>
+          <div id="historico"></div>
+        </div>
+      </section>
+
+      <!-- CADASTRO -->
+      <section id="aba-cadastro" class="aba">
+        <div class="card">
+          <h2>Cadastro Veículo</h2>
+
+          <input type="text" id="placa" placeholder="Placa" />
+          <input type="text" id="nome_cliente" placeholder="Cliente" />
+          <input type="text" id="telefone_cliente" placeholder="Telefone" />
+          <input type="text" id="modelo" placeholder="Modelo" />
+
+          <textarea
+            id="perfil"
+            rows="4"
+            placeholder="Perfil técnico"
+          ></textarea>
+
+          <div id="perfilAlerta"></div>
+
+          <button class="salvar" onclick="salvarCadastro()">
+            Salvar Cadastro
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <div id="status"></div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
