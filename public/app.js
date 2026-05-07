@@ -11,15 +11,25 @@ function mostrarStatus(texto, tipo = 'sucesso') {
   const status = document.getElementById('status');
 
   status.innerText = texto;
-  status.className = 'status';
+
+  status.className = '';
+
   status.classList.add(`status-${tipo}`);
+
+  status.style.display = 'block';
+
+  clearTimeout(status._timeout);
+
+  status._timeout = setTimeout(() => {
+    status.style.display = 'none';
+  }, 3000);
 }
 
 /* =========================
    ABAS
 ========================= */
 
-function trocarAba(nome) {
+function trocarAba(nome, event = null) {
   document.querySelectorAll('.aba').forEach((aba) => {
     aba.classList.remove('active');
   });
@@ -30,22 +40,19 @@ function trocarAba(nome) {
 
   document.getElementById(`aba-${nome}`).classList.add('active');
 
-  event.target.classList.add('active');
+  if (event) {
+    event.target.classList.add('active');
+  } else {
+    const btn = document.querySelector(`[data-aba="${nome}"]`);
+
+    if (btn) {
+      btn.classList.add('active');
+    }
+  }
 }
 
 function trocarAbaDireta(nome) {
-  document.querySelectorAll('.aba').forEach((aba) => {
-    aba.classList.remove('active');
-  });
-
-  document.querySelectorAll('.tab').forEach((tab) => {
-    tab.classList.remove('active');
-  });
-
-  document.getElementById(`aba-${nome}`).classList.add('active');
-
-  const btn = document.querySelector(`[onclick="trocarAba('${nome}')"]`);
-  if (btn) btn.classList.add('active');
+  trocarAba(nome);
 }
 
 /* =========================
@@ -56,6 +63,7 @@ function limparCampos() {
   document.getElementById('nome_cliente').value = '';
   document.getElementById('telefone_cliente').value = '';
   document.getElementById('modelo').value = '';
+  document.getElementById('ano').value = '';
   document.getElementById('perfil').value = '';
   document.getElementById('servico').value = '';
   document.getElementById('km').value = '';
@@ -78,8 +86,11 @@ function atualizarHeader(data) {
     topbar.classList.remove('active');
 
     document.getElementById('headerPlaca').innerText = 'Nenhum veículo';
+
     document.getElementById('headerModelo').innerText = '---';
+
     document.getElementById('headerCliente').innerText = '---';
+
     document.getElementById('headerTelefone').innerText = '---';
 
     return;
@@ -88,9 +99,13 @@ function atualizarHeader(data) {
   topbar.classList.add('active');
 
   document.getElementById('headerPlaca').innerText = data.placa || '---';
-  document.getElementById('headerModelo').innerText = data.modelo || '---';
+
+  document.getElementById('headerModelo').innerText =
+    `${data.modelo || '---'} • ${data.ano || '---'}`;
+
   document.getElementById('headerCliente').innerText =
     data.nome_cliente || '---';
+
   document.getElementById('headerTelefone').innerText =
     data.telefone_cliente || '---';
 }
@@ -158,9 +173,11 @@ function abrirVeiculo(data) {
   document.getElementById('telefone_cliente').value =
     data.telefone_cliente || '';
   document.getElementById('modelo').value = data.modelo || '';
+  document.getElementById('ano').value = data.ano || '';
   document.getElementById('perfil').value = data.perfil_tecnico || '';
   document.getElementById('km').value = data.km || '';
-
+  const campoKm = document.getElementById('km');
+  if (campoKm) campoKm.value = data.km_atual || '';
   carregarHistorico(data.placa);
 }
 
@@ -174,8 +191,15 @@ async function salvarCadastro() {
     nome_cliente: document.getElementById('nome_cliente').value,
     telefone_cliente: document.getElementById('telefone_cliente').value,
     modelo: document.getElementById('modelo').value,
+    ano: document.getElementById('ano').value,
     perfil_tecnico: document.getElementById('perfil').value,
   };
+  const ano = document.getElementById('ano').value;
+
+  if (ano && (ano.length < 4 || ano.length > 4)) {
+    mostrarStatus('Ano inválido', 'alerta');
+    return;
+  }
 
   try {
     const response = await fetch(`${API}/veiculo`, {
@@ -194,6 +218,7 @@ async function salvarCadastro() {
     atualizarHeader(body);
 
     mostrarStatus('Cadastro salvo', 'sucesso');
+    carregarClientes();
 
     trocarAbaDireta('servico');
   } catch (err) {
@@ -266,7 +291,11 @@ function calcularTotal() {
   const pecas = parseFloat(document.getElementById('valor_pecas').value) || 0;
   const mao = parseFloat(document.getElementById('valor_maodeobra').value) || 0;
 
-  document.getElementById('valor_total').value = (pecas + mao).toFixed(2);
+  const total = (pecas + mao).toFixed(2);
+
+  document.getElementById('valor_total').value = total;
+
+  document.getElementById('valor_total_display').innerText = 'R$ ' + total;
 }
 
 document.getElementById('valor_pecas').addEventListener('input', calcularTotal);
@@ -600,3 +629,130 @@ function toggleHistorico(index) {
     seta.innerText = '▼';
   }
 }
+
+/* =========================
+   SEÇÕES GLOBAIS
+========================= */
+
+function trocarSecao(nome, event = null) {
+  document.querySelectorAll('.secao-global').forEach((secao) => {
+    secao.classList.remove('active');
+  });
+
+  document.querySelectorAll('.sidebar-btn').forEach((btn) => {
+    btn.classList.remove('active');
+  });
+
+  document.getElementById(`secao-${nome}`).classList.add('active');
+
+  if (event) {
+    event.target.classList.add('active');
+  }
+}
+
+/* =========================
+   CLIENTES
+========================= */
+
+async function carregarClientes() {
+  try {
+    const response = await fetch(`${API}/veiculos`);
+
+    const clientes = await response.json();
+
+    const lista = document.getElementById('lista-clientes');
+
+    lista.innerHTML = '';
+
+    clientes.forEach((cliente) => {
+      lista.innerHTML += `
+    <tr
+      class="cliente-row"
+      onclick="abrirCliente('${cliente.placa}')"
+    >
+
+      <td>
+        ${cliente.nome_cliente || '-'}
+      </td>
+
+      <td>
+        ${cliente.placa || '-'}
+      </td>
+
+      <td>
+        ${cliente.modelo || '-'}
+      </td>
+      
+      <td>
+          ${cliente.ano || '-'}
+      </td>
+
+      <td>
+          ${cliente.perfil_tecnico || '-'}
+      </td>
+      
+      <td>
+        ${cliente.telefone_cliente || '-'}
+      </td>
+
+    </tr>
+  `;
+    });
+  } catch (err) {
+    console.error(err);
+
+    mostrarStatus('Erro ao carregar clientes', 'erro');
+  }
+}
+
+async function abrirCliente(placa) {
+  try {
+    const response = await fetch(`${API}/veiculo/${placa}`);
+
+    const data = await response.json();
+
+    veiculoAtual = data;
+
+    abrirVeiculo(data);
+
+    trocarSecao('oficina');
+
+    document.querySelectorAll('.sidebar-btn').forEach((btn) => {
+      btn.classList.remove('active');
+    });
+
+    document.querySelector('.sidebar-btn').classList.add('active');
+
+    trocarAbaDireta('servico');
+
+    mostrarStatus('Cliente carregado', 'sucesso');
+  } catch (err) {
+    console.error(err);
+
+    mostrarStatus('Erro ao abrir cliente', 'erro');
+  }
+}
+
+/* =========================
+   BUSCA CLIENTES
+========================= */
+
+document.getElementById('busca_cliente').addEventListener('input', function () {
+  const termo = this.value.toLowerCase();
+
+  const linhas = document.querySelectorAll('#lista-clientes tr');
+
+  linhas.forEach((linha) => {
+    const texto = linha.innerText.toLowerCase();
+
+    if (texto.includes(termo)) {
+      linha.style.display = 'table-row';
+    } else {
+      linha.style.display = 'none';
+    }
+  });
+});
+
+/* carregar automaticamente */
+
+carregarClientes();

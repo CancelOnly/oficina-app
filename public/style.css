@@ -2,12 +2,141 @@
    BASE
 ========================= */
 
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   background: #111;
   color: white;
-  font-family: Arial;
-  padding-bottom: 80px; /* evita status em cima dos botões */
+  font-family: Arial, sans-serif;
+  overflow: hidden;
+}
+
+/* =========================
+   LAYOUT
+========================= */
+
+.layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+
+  height: 100vh;
+}
+
+/* =========================
+   SIDEBAR
+========================= */
+
+.sidebar {
+  background: #181818;
+
+  border-right: 1px solid #2a2a2a;
+
+  display: flex;
+  flex-direction: column;
+
+  padding: 20px 14px;
+
+  box-sizing: border-box;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+}
+
+.sidebar-logo {
+  margin-bottom: 24px;
+}
+
+.sidebar-logo h1 {
+  margin: 0;
+  font-size: 24px;
+  color: #25d366;
+}
+
+.sidebar-logo span {
+  color: #777;
+  font-size: 12px;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  margin-top: 30px;
+  width: 100%;
+}
+
+.sidebar-btn {
+  width: 100%;
+
+  border: none;
+
+  background: #222;
+
+  color: white;
+
+  padding: 14px 16px;
+
+  border-radius: 10px;
+
+  text-align: left;
+
+  font-size: 14px;
+
+  cursor: pointer;
+
+  transition: 0.2s;
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+
+  box-sizing: border-box;
+}
+
+.sidebar-btn:hover {
+  background: #2b2b2b;
+}
+
+.sidebar-btn.active {
+  background: #25d366;
+  color: black;
+  font-weight: bold;
+}
+
+.sidebar-footer {
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+}
+
+/* =========================
+   CONTENT AREA
+========================= */
+
+.content-area {
+  display: flex;
+  flex-direction: column;
+
+  overflow: hidden;
+}
+
+/* =========================
+   SEÇÕES GLOBAIS
+========================= */
+
+.secao {
+  display: none;
+  height: 100%;
+}
+
+.secao.active {
+  display: flex;
+  flex-direction: column;
 }
 
 /* =========================
@@ -16,11 +145,16 @@ body {
 
 .topbar {
   background: #1d1d1d;
+
   padding: 16px;
+
   display: flex;
   justify-content: space-between;
   align-items: center;
+
   border-bottom: 2px solid #333;
+
+  flex-shrink: 0;
 }
 
 .topbar.active {
@@ -36,22 +170,58 @@ body {
   color: #ccc;
 }
 
+.header-right {
+  text-align: right;
+}
+
+.header-phone {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  margin-top: 6px;
+}
+
+.mini-whatsapp {
+  width: auto !important;
+
+  padding: 8px 12px !important;
+
+  background: #25d366 !important;
+  color: black !important;
+
+  border-radius: 8px;
+
+  font-size: 12px;
+  font-weight: bold;
+}
+
 /* =========================
    TABS
 ========================= */
 
 .tabs {
   display: flex;
+
   background: #1a1a1a;
+
+  flex-shrink: 0;
 }
 
 .tab {
   flex: 1;
+
   border: none;
+
   background: #1a1a1a;
+
   color: white;
+
   padding: 14px;
+
   font-size: 15px;
+
+  cursor: pointer;
 }
 
 .tab.active {
@@ -66,6 +236,10 @@ body {
 
 .container {
   padding: 14px;
+
+  overflow-y: auto;
+
+  flex: 1;
 }
 
 .aba {
@@ -76,10 +250,23 @@ body {
   display: block;
 }
 
+/* =========================
+   CARD
+========================= */
+
 .card {
   background: #1f1f1f;
+
   padding: 18px;
+
   border-radius: 12px;
+}
+
+#aba-buscar .card {
+  width: 100%;
+  max-width: 500px; /* Define uma largura máxima elegante */
+  margin: 0 auto; /* Margem automática para garantir o centro */
+  text-align: center; /* Centraliza os textos e botões dentro do card */
 }
 
 /* =========================
@@ -90,11 +277,16 @@ input,
 textarea,
 button {
   width: 100%;
-  box-sizing: border-box;
+
   border: none;
+
   border-radius: 10px;
+
   padding: 10px;
+
   margin-top: 10px;
+
+  font-size: 14px;
 }
 
 input,
@@ -103,21 +295,33 @@ textarea {
   color: white;
 }
 
+textarea {
+  resize: vertical;
+}
+
 button {
   background: #333;
+
   color: white;
+
   font-weight: bold;
+
   cursor: pointer;
-  width: 100%;
+
+  transition: 0.2s;
+}
+
+button:hover {
+  filter: brightness(1.1);
 }
 
 /* =========================
-   SALVAR
+   BOTÃO SALVAR
 ========================= */
 
 .salvar {
-  background: #25d366;
-  color: black;
+  background: #25d366 !important;
+  color: black !important;
 }
 
 /* =========================
@@ -126,20 +330,26 @@ button {
 
 .quick-actions {
   display: flex;
-  flex-wrap: nowrap;
+
   gap: 8px;
-  margin-top: 10px;
+
   overflow-x: auto;
+
+  margin-top: 10px;
+
   padding-bottom: 4px;
 }
 
 .quick-actions button {
   flex: 0 0 auto;
+
   width: auto;
-  white-space: nowrap;
 
   padding: 8px 12px;
+
   font-size: 12px;
+
+  white-space: nowrap;
 
   border-radius: 8px;
 }
@@ -150,8 +360,11 @@ button {
 
 .peca-form {
   display: grid;
+
   grid-template-columns: 2fr 1fr;
+
   gap: 10px;
+
   margin-top: 10px;
 }
 
@@ -160,37 +373,35 @@ button {
 }
 
 .peca-form + button {
-  width: 100% !important;
-  padding: 10px;
-  font-size: 13px;
   background: #444;
+
+  font-size: 13px;
+
+  padding: 9px;
 }
 
-/* botão adicionar peça menor */
-.peca-form + button {
-  padding: 8px;
-  font-size: 13px;
-  background: #444;
-}
+/* =========================
+   LISTA PEÇAS
+========================= */
 
-/* lista */
 #lista_pecas {
   margin-top: 12px;
 }
 
-/* item */
 .peca-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
 
   background: #1a1a1a;
-  padding: 8px 10px;
+
+  padding: 10px;
+
   border-radius: 8px;
+
   margin-top: 6px;
 }
 
-/* texto */
 .peca-item strong {
   font-size: 13px;
 }
@@ -200,24 +411,31 @@ button {
   color: #aaa;
 }
 
-/* BOTÃO REMOVER (corrigido) */
+/* BOTÃO REMOVER */
+
 .peca-item button {
-  width: auto !important;
-  min-width: 26px;
-  height: 26px;
+  width: 28px !important;
+  min-width: 28px !important;
+  max-width: 28px !important;
+
+  height: 28px;
 
   padding: 0 !important;
+  margin: 0 !important;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
-  font-size: 12px;
-
   background: transparent !important;
-  color: #ff4d4d !important;
+
   border: 1px solid #ff4d4d !important;
+
+  color: #ff4d4d !important;
+
   border-radius: 6px;
+
+  font-size: 12px;
 }
 
 .peca-item button:hover {
@@ -231,12 +449,16 @@ button {
 
 .pecas-total {
   margin-top: 12px;
-  padding: 10px;
+
+  padding: 12px;
+
   background: #111;
+
   border-radius: 8px;
 
   display: flex;
   justify-content: space-between;
+  align-items: center;
 }
 
 /* =========================
@@ -245,9 +467,23 @@ button {
 
 .financeiro-grid {
   display: grid;
+
   grid-template-columns: 1fr 1fr;
+
   gap: 10px;
+
   margin-top: 10px;
+}
+
+.financeiro-grid label {
+  display: block;
+
+  margin-top: 10px;
+  margin-bottom: 6px;
+
+  color: #aaa;
+
+  font-size: 13px;
 }
 
 /* =========================
@@ -256,115 +492,12 @@ button {
 
 .servico-item {
   background: #2a2a2a;
+
   padding: 14px;
+
   border-radius: 10px;
-  margin-top: 10px;
-}
-
-/* =========================
-   STATUS (FIX OVERLAY BUG)
-========================= */
-
-#status {
-  position: fixed;
-  left: 10px;
-  right: 10px;
-  bottom: 10px;
-
-  background: #25d366;
-  color: black;
-
-  padding: 12px;
-  border-radius: 10px;
-  text-align: center;
-  font-weight: bold;
-
-  z-index: 9999; /* não fica mais por cima de botão aleatório */
-}
-
-.status-erro {
-  background: #ff4d4d !important;
-}
-
-.status-alerta {
-  background: #ffc107 !important;
-}
-
-/* =========================
-   HISTÓRICO NOVO
-========================= */
-
-.historico-topo {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-  margin-bottom: 10px;
-}
-
-.historico-topo strong {
-  font-size: 15px;
-}
-
-.historico-topo span {
-  color: #aaa;
-  font-size: 13px;
-}
-
-.historico-servico {
-  background: #1a1a1a;
-  padding: 12px;
-  border-radius: 8px;
 
   margin-top: 10px;
-  line-height: 1.4;
-}
-
-.historico-bloco {
-  margin-top: 14px;
-}
-
-.historico-bloco h4 {
-  margin: 0 0 8px 0;
-  font-size: 14px;
-  color: #25d366;
-}
-
-.historico-peca {
-  display: flex;
-  justify-content: space-between;
-
-  background: #1a1a1a;
-  padding: 8px 10px;
-  border-radius: 8px;
-
-  margin-top: 6px;
-}
-
-.historico-peca span {
-  color: #ddd;
-}
-
-.historico-valores {
-  margin-top: 16px;
-
-  display: grid;
-  gap: 8px;
-}
-
-.historico-valores div {
-  display: flex;
-  justify-content: space-between;
-
-  background: #1a1a1a;
-  padding: 10px;
-  border-radius: 8px;
-}
-
-.historico-total {
-  background: #25d366 !important;
-  color: black;
-  font-weight: bold;
 }
 
 /* =========================
@@ -381,7 +514,9 @@ button {
 
 .historico-header p {
   margin: 4px 0 0;
+
   color: #aaa;
+
   font-size: 13px;
 }
 
@@ -391,12 +526,15 @@ button {
 
 .historico-header-right span {
   display: block;
+
   margin-top: 4px;
+
   color: #25d366;
 }
 
 .historico-body {
   display: none;
+
   margin-top: 14px;
 }
 
@@ -406,8 +544,11 @@ button {
 
 .historico-servico-box {
   background: #1a1a1a;
+
   padding: 12px;
+
   border-radius: 8px;
+
   margin-top: 10px;
 }
 
@@ -422,7 +563,9 @@ button {
   margin-top: 8px;
 
   background: #111;
+
   padding: 8px;
+
   border-radius: 6px;
 }
 
@@ -430,6 +573,7 @@ button {
   margin-top: 14px;
 
   display: grid;
+
   gap: 8px;
 }
 
@@ -438,12 +582,178 @@ button {
   justify-content: space-between;
 
   background: #1a1a1a;
+
   padding: 10px;
+
   border-radius: 8px;
 }
 
 .historico-total {
   background: #25d366 !important;
+
   color: black;
+
   font-weight: bold;
+}
+
+/* =========================
+   STATUS
+========================= */
+
+#status {
+  position: fixed;
+
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+
+  padding: 12px;
+
+  border-radius: 10px;
+
+  text-align: center;
+
+  font-weight: bold;
+
+  z-index: 9999;
+
+  background: #25d366;
+  color: black;
+}
+
+.status-erro {
+  background: #ff4d4d !important;
+}
+
+.status-alerta {
+  background: #ffc107 !important;
+}
+
+/* =========================
+   RESPONSIVO
+========================= */
+
+@media (max-width: 900px) {
+  body {
+    overflow: auto;
+  }
+
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .content-area {
+    width: 100%;
+  }
+}
+
+/* =========================
+   SEÇÕES GLOBAIS
+========================= */
+
+.secao-global {
+  display: none;
+  height: 100%;
+}
+
+.secao-global.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* =========================
+   TABELA CLIENTES
+========================= */
+
+.tabela-wrapper {
+  margin-top: 14px;
+
+  overflow-x: auto;
+
+  border-radius: 10px;
+
+  border: 1px solid #2a2a2a;
+}
+
+.clientes-table {
+  width: 100%;
+
+  border-collapse: collapse;
+
+  min-width: 700px;
+
+  background: #1a1a1a;
+}
+
+.clientes-table thead {
+  background: #222;
+}
+
+.clientes-table th {
+  text-align: left;
+
+  padding: 14px;
+
+  font-size: 13px;
+
+  color: #25d366;
+
+  border-bottom: 1px solid #333;
+}
+
+.clientes-table td {
+  padding: 14px;
+
+  border-bottom: 1px solid #2a2a2a;
+
+  font-size: 14px;
+
+  color: #ddd;
+}
+
+.clientes-table tbody tr {
+  cursor: pointer;
+
+  transition: 0.15s;
+}
+
+.clientes-table tbody tr:hover {
+  background: #252525;
+}
+
+/* =========================
+   BUSCA CLIENTES
+========================= */
+
+#busca_cliente {
+  margin-bottom: 14px;
+}
+
+/* =========================
+   ROW HOVER
+========================= */
+
+.cliente-row {
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.cliente-row:hover {
+  background: #2a2a2a;
+}
+
+/* REMOVE SCROLL INPUT NUMBER */
+
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type='number'] {
+  -moz-appearance: textfield;
 }
