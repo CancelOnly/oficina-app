@@ -1,17 +1,102 @@
 /* =========================
-   BASE
+   VARIÁVEIS DE TEMA
 ========================= */
+:root {
+  /* Cores Padrão (Dark Mode) */
+  --bg-body: #111;
+  --bg-sidebar: #181818;
+  --bg-card: #1f1f1f;
+  --bg-input: #2b2b2b;
+  --bg-topbar: #1d1d1d;
+  --bg-item: #1a1a1a;
+  --text-main: #ffffff;
+  --text-secondary: #aaa;
+  --border-color: #2a2a2a;
+  --button-default: #333;
+  --accent-primary: #25d366; /* Verde WhatsApp */
+  --accent-header: #1f4d2f; /* Verde Escuro */
+}
 
+body.light-mode {
+  /* Fundo geral (sem branco estourado) */
+  --bg-body: #e7ecf3;
+  --bg-sidebar: #f4f7fb;
+  --bg-topbar: #f5f8fc;
+
+  /* Superfícies */
+  --bg-card: #f5f8fc;
+  --bg-item: #e1e8f2;
+  --bg-input: #e9eff7;
+
+  /* Texto */
+  --text-main: #0f172a;
+  --text-secondary: #475569;
+
+  /* Bordas suaves */
+  --border-color: #cbd5e1;
+
+  /* Botões neutros */
+  --button-default: #dbe4f0;
+
+  /* 🔵 Accent principal (industrial blue) */
+  --accent-primary: #2563eb;
+
+  /* Header mais frio, técnico */
+  --accent-header: #dbeafe;
+}
+
+/* =========================
+   BASE (Atualizado para usar variáveis)
+========================= */
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  background: #111;
-  color: white;
+  background: var(--bg-body);
+  color: var(--text-main);
   font-family: Arial, sans-serif;
   overflow: hidden;
+  transition:
+    background 0.3s,
+    color 0.3s; /* Transição suave */
+}
+
+/* Aplique as variáveis nos seus seletores abaixo */
+.sidebar {
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-color);
+}
+.topbar {
+  background: var(--bg-topbar);
+  border-bottom: 2px solid var(--border-color);
+}
+.card {
+  background: var(--bg-card);
+}
+.peca-item,
+.historico-servico-box,
+.tabs,
+.tab {
+  background: var(--bg-item);
+}
+input,
+textarea {
+  background: var(--bg-input);
+  color: var(--text-main);
+}
+button {
+  background: var(--button-default);
+  color: var(--text-main);
+}
+
+/* Mantenha o verde do WhatsApp fixo, ele costuma ser padrão nos dois temas */
+.sidebar-logo h1,
+.tab.active,
+.sidebar-btn.active,
+.salvar {
+  color: #000; /* Texto preto no fundo verde fica melhor */
 }
 
 /* =========================
@@ -21,7 +106,6 @@ body {
 .layout {
   display: grid;
   grid-template-columns: 240px 1fr;
-
   height: 100vh;
 }
 
@@ -30,15 +114,11 @@ body {
 ========================= */
 
 .sidebar {
-  background: #181818;
-
-  border-right: 1px solid #2a2a2a;
-
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-
   padding: 20px 14px;
-
   box-sizing: border-box;
 }
 
@@ -53,11 +133,11 @@ body {
 .sidebar-logo h1 {
   margin: 0;
   font-size: 24px;
-  color: #25d366;
+  color: var(--accent-primary);
 }
 
 .sidebar-logo span {
-  color: #777;
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
@@ -65,52 +145,40 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
-
   margin-top: 30px;
   width: 100%;
 }
 
 .sidebar-btn {
   width: 100%;
-
   border: none;
-
-  background: #222;
-
-  color: white;
-
+  background: var(--bg-input);
+  color: var(--text-main);
   padding: 14px 16px;
-
   border-radius: 10px;
-
   text-align: left;
-
   font-size: 14px;
-
   cursor: pointer;
-
   transition: 0.2s;
-
   display: flex;
   align-items: center;
   justify-content: flex-start;
-
   box-sizing: border-box;
 }
 
 .sidebar-btn:hover {
-  background: #2b2b2b;
+  background: var(--button-default);
 }
 
 .sidebar-btn.active {
-  background: #25d366;
+  background: var(--accent-primary);
   color: black;
   font-weight: bold;
 }
 
 .sidebar-footer {
   font-size: 12px;
-  color: #666;
+  color: var(--text-secondary);
   text-align: center;
 }
 
@@ -121,7 +189,6 @@ body {
 .content-area {
   display: flex;
   flex-direction: column;
-
   overflow: hidden;
 }
 
@@ -144,21 +211,17 @@ body {
 ========================= */
 
 .topbar {
-  background: #1d1d1d;
-
+  background: var(--bg-topbar);
   padding: 16px;
-
   display: flex;
   justify-content: space-between;
   align-items: center;
-
-  border-bottom: 2px solid #333;
-
+  border-bottom: 2px solid var(--border-color);
   flex-shrink: 0;
 }
 
 .topbar.active {
-  background: #1f4d2f;
+  background: var(--accent-header);
 }
 
 .header-left strong {
@@ -167,7 +230,7 @@ body {
 }
 
 .header-left span {
-  color: #ccc;
+  color: var(--text-secondary);
 }
 
 .header-right {
@@ -178,20 +241,15 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-
   margin-top: 6px;
 }
 
 .mini-whatsapp {
   width: auto !important;
-
   padding: 8px 12px !important;
-
-  background: #25d366 !important;
+  background: var(--accent-primary) !important;
   color: black !important;
-
   border-radius: 8px;
-
   font-size: 12px;
   font-weight: bold;
 }
@@ -202,30 +260,22 @@ body {
 
 .tabs {
   display: flex;
-
-  background: #1a1a1a;
-
+  background: var(--bg-item);
   flex-shrink: 0;
 }
 
 .tab {
   flex: 1;
-
   border: none;
-
-  background: #1a1a1a;
-
-  color: white;
-
+  background: var(--bg-item);
+  color: var(--text-main);
   padding: 14px;
-
   font-size: 15px;
-
   cursor: pointer;
 }
 
 .tab.active {
-  background: #25d366;
+  background: var(--accent-primary);
   color: black;
   font-weight: bold;
 }
@@ -236,9 +286,7 @@ body {
 
 .container {
   padding: 14px;
-
   overflow-y: auto;
-
   flex: 1;
 }
 
@@ -255,10 +303,8 @@ body {
 ========================= */
 
 .card {
-  background: #1f1f1f;
-
+  background: var(--bg-card);
   padding: 18px;
-
   border-radius: 12px;
 }
 
@@ -277,22 +323,18 @@ input,
 textarea,
 button {
   width: 100%;
-
   border: none;
-
   border-radius: 10px;
-
   padding: 10px;
-
   margin-top: 10px;
-
   font-size: 14px;
 }
 
 input,
 textarea {
-  background: #2b2b2b;
-  color: white;
+  background: var(--bg-input);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
 }
 
 textarea {
@@ -300,14 +342,10 @@ textarea {
 }
 
 button {
-  background: #333;
-
-  color: white;
-
+  background: var(--button-default);
+  color: var(--text-main);
   font-weight: bold;
-
   cursor: pointer;
-
   transition: 0.2s;
 }
 
@@ -320,7 +358,7 @@ button:hover {
 ========================= */
 
 .salvar {
-  background: #25d366 !important;
+  background: var(--accent-primary) !important;
   color: black !important;
 }
 
@@ -330,27 +368,18 @@ button:hover {
 
 .quick-actions {
   display: flex;
-
   gap: 8px;
-
   overflow-x: auto;
-
   margin-top: 10px;
-
   padding-bottom: 4px;
 }
 
 .quick-actions button {
   flex: 0 0 auto;
-
   width: auto;
-
   padding: 8px 12px;
-
   font-size: 12px;
-
   white-space: nowrap;
-
   border-radius: 8px;
 }
 
@@ -360,11 +389,8 @@ button:hover {
 
 .peca-form {
   display: grid;
-
   grid-template-columns: 2fr 1fr;
-
   gap: 10px;
-
   margin-top: 10px;
 }
 
@@ -373,10 +399,8 @@ button:hover {
 }
 
 .peca-form + button {
-  background: #444;
-
+  background: var(--button-default);
   font-size: 13px;
-
   padding: 9px;
 }
 
@@ -392,13 +416,9 @@ button:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
-
-  background: #1a1a1a;
-
+  background: var(--bg-item);
   padding: 10px;
-
   border-radius: 8px;
-
   margin-top: 6px;
 }
 
@@ -408,7 +428,7 @@ button:hover {
 
 .peca-item span {
   font-size: 12px;
-  color: #aaa;
+  color: var(--text-secondary);
 }
 
 /* BOTÃO REMOVER */
@@ -417,30 +437,22 @@ button:hover {
   width: 28px !important;
   min-width: 28px !important;
   max-width: 28px !important;
-
   height: 28px;
-
   padding: 0 !important;
   margin: 0 !important;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   background: transparent !important;
-
   border: 1px solid #ff4d4d !important;
-
   color: #ff4d4d !important;
-
   border-radius: 6px;
-
   font-size: 12px;
 }
 
 .peca-item button:hover {
   background: #ff4d4d !important;
-  color: black !important;
+  color: white !important;
 }
 
 /* =========================
@@ -449,13 +461,9 @@ button:hover {
 
 .pecas-total {
   margin-top: 12px;
-
   padding: 12px;
-
-  background: #111;
-
+  background: var(--bg-body);
   border-radius: 8px;
-
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -467,22 +475,16 @@ button:hover {
 
 .financeiro-grid {
   display: grid;
-
   grid-template-columns: 1fr 1fr;
-
   gap: 10px;
-
   margin-top: 10px;
 }
 
 .financeiro-grid label {
   display: block;
-
   margin-top: 10px;
   margin-bottom: 6px;
-
-  color: #aaa;
-
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
@@ -491,12 +493,9 @@ button:hover {
 ========================= */
 
 .servico-item {
-  background: #2a2a2a;
-
+  background: var(--bg-input);
   padding: 14px;
-
   border-radius: 10px;
-
   margin-top: 10px;
 }
 
@@ -508,15 +507,12 @@ button:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
-
   cursor: pointer;
 }
 
 .historico-header p {
   margin: 4px 0 0;
-
-  color: #aaa;
-
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
@@ -526,15 +522,12 @@ button:hover {
 
 .historico-header-right span {
   display: block;
-
   margin-top: 4px;
-
-  color: #25d366;
+  color: var(--accent-primary);
 }
 
 .historico-body {
   display: none;
-
   margin-top: 14px;
 }
 
@@ -543,56 +536,42 @@ button:hover {
 }
 
 .historico-servico-box {
-  background: #1a1a1a;
-
+  background: var(--bg-item);
   padding: 12px;
-
   border-radius: 8px;
-
   margin-top: 10px;
 }
 
 .historico-servico-box strong {
-  color: #25d366;
+  color: var(--accent-primary);
 }
 
 .historico-peca {
   display: flex;
   justify-content: space-between;
-
   margin-top: 8px;
-
-  background: #111;
-
+  background: var(--bg-body);
   padding: 8px;
-
   border-radius: 6px;
 }
 
 .historico-valores {
   margin-top: 14px;
-
   display: grid;
-
   gap: 8px;
 }
 
 .historico-valores div {
   display: flex;
   justify-content: space-between;
-
-  background: #1a1a1a;
-
+  background: var(--bg-item);
   padding: 10px;
-
   border-radius: 8px;
 }
 
 .historico-total {
-  background: #25d366 !important;
-
+  background: var(--accent-primary) !important;
   color: black;
-
   font-weight: bold;
 }
 
@@ -602,22 +581,15 @@ button:hover {
 
 #status {
   position: fixed;
-
   left: 10px;
   right: 10px;
   bottom: 10px;
-
   padding: 12px;
-
   border-radius: 10px;
-
   text-align: center;
-
   font-weight: bold;
-
   z-index: 9999;
-
-  background: #25d366;
+  background: var(--accent-primary);
   color: black;
 }
 
@@ -671,58 +643,44 @@ button:hover {
 
 .tabela-wrapper {
   margin-top: 14px;
-
   overflow-x: auto;
-
   border-radius: 10px;
-
-  border: 1px solid #2a2a2a;
+  border: 1px solid var(--border-color);
 }
 
 .clientes-table {
   width: 100%;
-
   border-collapse: collapse;
-
   min-width: 700px;
-
-  background: #1a1a1a;
+  background: var(--bg-item);
 }
 
 .clientes-table thead {
-  background: #222;
+  background: var(--bg-input);
 }
 
 .clientes-table th {
   text-align: left;
-
   padding: 14px;
-
   font-size: 13px;
-
-  color: #25d366;
-
-  border-bottom: 1px solid #333;
+  color: var(--accent-primary);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .clientes-table td {
   padding: 14px;
-
-  border-bottom: 1px solid #2a2a2a;
-
+  border-bottom: 1px solid var(--border-color);
   font-size: 14px;
-
-  color: #ddd;
+  color: var(--text-main);
 }
 
 .clientes-table tbody tr {
   cursor: pointer;
-
   transition: 0.15s;
 }
 
 .clientes-table tbody tr:hover {
-  background: #252525;
+  background: var(--bg-card);
 }
 
 /* =========================
@@ -731,6 +689,67 @@ button:hover {
 
 #busca_cliente {
   margin-bottom: 14px;
+}
+
+/* =========================
+   SWITCH DE TEMA
+========================= */
+.theme-switch-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding-top: 15px;
+  border-top: 1px solid var(--border-color);
+}
+
+.theme-switch-wrapper span {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.theme-switch {
+  display: inline-block;
+  height: 20px;
+  position: relative;
+  width: 40px;
+}
+
+.theme-switch input {
+  display: none;
+}
+
+.slider {
+  background-color: var(--button-default);
+  bottom: 0;
+  cursor: pointer;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+  transition: 0.4s;
+  border-radius: 34px;
+}
+
+.slider:before {
+  background-color: #fff;
+  bottom: 3px;
+  content: '';
+  height: 14px;
+  left: 4px;
+  position: absolute;
+  transition: 0.4s;
+  width: 14px;
+  border-radius: 50%;
+}
+
+/* Quando o input está marcado (Ligado) */
+input:checked + .slider {
+  background-color: var(--accent-primary); /* Verde do seu projeto */
+}
+
+input:checked + .slider:before {
+  transform: translateX(18px);
 }
 
 /* =========================
@@ -743,7 +762,7 @@ button:hover {
 }
 
 .cliente-row:hover {
-  background: #2a2a2a;
+  background: var(--bg-input);
 }
 
 /* REMOVE SCROLL INPUT NUMBER */

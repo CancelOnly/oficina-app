@@ -6,20 +6,14 @@ let listaPecas = [];
 /* =========================
    STATUS
 ========================= */
-
 function mostrarStatus(texto, tipo = 'sucesso') {
   const status = document.getElementById('status');
-
+  if (!status) return;
   status.innerText = texto;
-
   status.className = '';
-
   status.classList.add(`status-${tipo}`);
-
   status.style.display = 'block';
-
   clearTimeout(status._timeout);
-
   status._timeout = setTimeout(() => {
     status.style.display = 'none';
   }, 3000);
@@ -28,26 +22,22 @@ function mostrarStatus(texto, tipo = 'sucesso') {
 /* =========================
    ABAS
 ========================= */
-
 function trocarAba(nome, event = null) {
-  document.querySelectorAll('.aba').forEach((aba) => {
-    aba.classList.remove('active');
-  });
+  document
+    .querySelectorAll('.aba')
+    .forEach((aba) => aba.classList.remove('active'));
+  document
+    .querySelectorAll('.tab')
+    .forEach((tab) => tab.classList.remove('active'));
 
-  document.querySelectorAll('.tab').forEach((tab) => {
-    tab.classList.remove('active');
-  });
-
-  document.getElementById(`aba-${nome}`).classList.add('active');
+  const abaAlvo = document.getElementById(`aba-${nome}`);
+  if (abaAlvo) abaAlvo.classList.add('active');
 
   if (event) {
     event.target.classList.add('active');
   } else {
     const btn = document.querySelector(`[data-aba="${nome}"]`);
-
-    if (btn) {
-      btn.classList.add('active');
-    }
+    if (btn) btn.classList.add('active');
   }
 }
 
@@ -56,56 +46,59 @@ function trocarAbaDireta(nome) {
 }
 
 /* =========================
-   LIMPAR
+   LIMPAR (CORRIGIDO PARA NÃO DAR ERRO NULL)
 ========================= */
-
 function limparCampos() {
-  document.getElementById('nome_cliente').value = '';
-  document.getElementById('telefone_cliente').value = '';
-  document.getElementById('modelo').value = '';
-  document.getElementById('ano').value = '';
-  document.getElementById('perfil').value = '';
-  document.getElementById('servico').value = '';
-  document.getElementById('km').value = '';
-  document.getElementById('topbar').classList.remove('active');
+  // Lista de IDs que realmente existem no seu HTML
+  const campos = [
+    'nome_cliente',
+    'telefone_cliente',
+    'modelo',
+    'ano',
+    'perfil',
+    'servico',
+    'km',
+    'buscar_placa',
+    'placa',
+  ];
+
+  campos.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.value = ''; // Só limpa se o elemento existir
+  });
+
+  const topbar = document.getElementById('topbar');
+  if (topbar) topbar.classList.remove('active');
 
   listaPecas = [];
   renderizarPecas();
 
-  document.getElementById('historico').innerHTML = '';
+  const historico = document.getElementById('historico');
+  if (historico) historico.innerHTML = '';
 }
 
 /* =========================
    HEADER
 ========================= */
-
 function atualizarHeader(data) {
   const topbar = document.getElementById('topbar');
+  if (!topbar) return;
 
   if (!data) {
     topbar.classList.remove('active');
-
     document.getElementById('headerPlaca').innerText = 'Nenhum veículo';
-
     document.getElementById('headerModelo').innerText = '---';
-
     document.getElementById('headerCliente').innerText = '---';
-
     document.getElementById('headerTelefone').innerText = '---';
-
     return;
   }
 
   topbar.classList.add('active');
-
   document.getElementById('headerPlaca').innerText = data.placa || '---';
-
   document.getElementById('headerModelo').innerText =
     `${data.modelo || '---'} • ${data.ano || '---'}`;
-
   document.getElementById('headerCliente').innerText =
     data.nome_cliente || '---';
-
   document.getElementById('headerTelefone').innerText =
     data.telefone_cliente || '---';
 }
@@ -113,11 +106,10 @@ function atualizarHeader(data) {
 /* =========================
    BUSCAR
 ========================= */
-
 async function buscarVeiculo() {
-  const placa = document
-    .getElementById('buscar_placa')
-    .value.toUpperCase()
+  const inputBusca = document.getElementById('buscar_placa');
+  const placa = inputBusca.value
+    .toUpperCase()
     .replace(/[^A-Z0-9]/g, '')
     .trim();
 
@@ -132,28 +124,16 @@ async function buscarVeiculo() {
     if (response.status === 404) {
       limparCampos();
       atualizarHeader(null);
-
       document.getElementById('placa').value = placa;
-
       mostrarStatus('Veículo não encontrado', 'alerta');
-
       trocarAbaDireta('cadastro');
       return;
     }
 
-    if (!response.ok) {
-      mostrarStatus('Erro ao buscar veículo', 'erro');
-      return;
-    }
-
     const data = await response.json();
-
     veiculoAtual = data;
-
     abrirVeiculo(data);
-
     mostrarStatus('Veículo carregado', 'sucesso');
-
     trocarAbaDireta('servico');
   } catch (err) {
     console.error(err);
@@ -162,12 +142,12 @@ async function buscarVeiculo() {
 }
 
 /* =========================
-   ABRIR VEÍCULO
+   ABRIR VEÍCULO (AJUSTADO PARA KM_ATUAL)
 ========================= */
-
 function abrirVeiculo(data) {
   atualizarHeader(data);
 
+  // Preenche os campos de cadastro
   document.getElementById('placa').value = data.placa || '';
   document.getElementById('nome_cliente').value = data.nome_cliente || '';
   document.getElementById('telefone_cliente').value =
@@ -175,31 +155,41 @@ function abrirVeiculo(data) {
   document.getElementById('modelo').value = data.modelo || '';
   document.getElementById('ano').value = data.ano || '';
   document.getElementById('perfil').value = data.perfil_tecnico || '';
-  document.getElementById('km').value = data.km || '';
+
+  // Preenche o KM atual na aba de serviço
   const campoKm = document.getElementById('km');
-  if (campoKm) campoKm.value = data.km_atual || '';
+  if (campoKm) {
+    campoKm.value = data.km_atual || '';
+  }
+
   carregarHistorico(data.placa);
 }
 
 /* =========================
-   CADASTRO
+   CADASTRO (CORRIGIDO)
 ========================= */
-
 async function salvarCadastro() {
+  const placa = document.getElementById('placa').value;
+  const ano = document.getElementById('ano').value;
+
+  if (!placa) {
+    mostrarStatus('Placa é obrigatória', 'alerta');
+    return;
+  }
+
+  if (ano && ano.length !== 4) {
+    mostrarStatus('Ano deve ter 4 dígitos', 'alerta');
+    return;
+  }
+
   const body = {
-    placa: document.getElementById('placa').value,
+    placa: placa,
     nome_cliente: document.getElementById('nome_cliente').value,
     telefone_cliente: document.getElementById('telefone_cliente').value,
     modelo: document.getElementById('modelo').value,
-    ano: document.getElementById('ano').value,
+    ano: parseInt(ano) || 0, // Garante que o ano vá como número
     perfil_tecnico: document.getElementById('perfil').value,
   };
-  const ano = document.getElementById('ano').value;
-
-  if (ano && (ano.length < 4 || ano.length > 4)) {
-    mostrarStatus('Ano inválido', 'alerta');
-    return;
-  }
 
   try {
     const response = await fetch(`${API}/veiculo`, {
@@ -208,29 +198,22 @@ async function salvarCadastro() {
       body: JSON.stringify(body),
     });
 
-    if (!response.ok) {
-      mostrarStatus('Erro ao salvar cadastro', 'erro');
-      return;
-    }
+    if (!response.ok) throw new Error('Erro ao salvar');
 
     veiculoAtual = body;
-
     atualizarHeader(body);
-
     mostrarStatus('Cadastro salvo', 'sucesso');
     carregarClientes();
-
     trocarAbaDireta('servico');
   } catch (err) {
     console.error(err);
-    mostrarStatus('Servidor offline', 'erro');
+    mostrarStatus('Erro ao salvar cadastro', 'erro');
   }
 }
 
 /* =========================
    PEÇAS
 ========================= */
-
 function adicionarPeca() {
   const nome = document.getElementById('peca_nome').value;
   const valor = parseFloat(document.getElementById('peca_valor').value) || 0;
@@ -241,9 +224,7 @@ function adicionarPeca() {
   }
 
   listaPecas.push({ nome, valor });
-
   renderizarPecas();
-
   document.getElementById('peca_nome').value = '';
   document.getElementById('peca_valor').value = '';
 }
@@ -255,30 +236,29 @@ function removerPeca(index) {
 
 function renderizarPecas() {
   const lista = document.getElementById('lista_pecas');
+  if (!lista) return;
 
   lista.innerHTML = '';
-
   let total = 0;
 
   listaPecas.forEach((p, i) => {
     total += p.valor;
-
     lista.innerHTML += `
-      <div class="peca-item">
-        <div>
-          <strong>${p.nome}</strong><br>
-          R$ ${p.valor.toFixed(2)}
-        </div>
-
-        <button onclick="removerPeca(${i})">X</button>
-      </div>
-    `;
+            <div class="peca-item">
+                <div>
+                    <strong>${p.nome}</strong><br>
+                    R$ ${p.valor.toFixed(2)}
+                </div>
+                <button onclick="removerPeca(${i})">X</button>
+            </div>
+        `;
   });
 
-  document.getElementById('valor_pecas').value = total.toFixed(2);
+  const inputValorPecas = document.getElementById('valor_pecas');
+  if (inputValorPecas) inputValorPecas.value = total.toFixed(2);
 
-  document.getElementById('valor_pecas_display').innerText =
-    'R$ ' + total.toFixed(2);
+  const displayPecas = document.getElementById('valor_pecas_display');
+  if (displayPecas) displayPecas.innerText = 'R$ ' + total.toFixed(2);
 
   calcularTotal();
 }
@@ -286,72 +266,73 @@ function renderizarPecas() {
 /* =========================
    TOTAL
 ========================= */
-
 function calcularTotal() {
-  const pecas = parseFloat(document.getElementById('valor_pecas').value) || 0;
-  const mao = parseFloat(document.getElementById('valor_maodeobra').value) || 0;
+  const vPecas = document.getElementById('valor_pecas');
+  const vMao = document.getElementById('valor_maodeobra');
+
+  const pecas = vPecas ? parseFloat(vPecas.value) || 0 : 0;
+  const mao = vMao ? parseFloat(vMao.value) || 0 : 0;
 
   const total = (pecas + mao).toFixed(2);
 
-  document.getElementById('valor_total').value = total;
+  const elTotal = document.getElementById('valor_total');
+  if (elTotal) elTotal.value = total;
 
-  document.getElementById('valor_total_display').innerText = 'R$ ' + total;
+  const displayTotal = document.getElementById('valor_total_display');
+  if (displayTotal) displayTotal.innerText = 'R$ ' + total;
 }
 
-document.getElementById('valor_pecas').addEventListener('input', calcularTotal);
-document
-  .getElementById('valor_maodeobra')
-  .addEventListener('input', calcularTotal);
+// Adiciona os ouvintes de evento apenas se os elementos existirem
+const inputPecas = document.getElementById('valor_pecas');
+const inputMao = document.getElementById('valor_maodeobra');
+if (inputPecas) inputPecas.addEventListener('input', calcularTotal);
+if (inputMao) inputMao.addEventListener('input', calcularTotal);
 
 /* =========================
-   SERVIÇO
+   SERVIÇO (CONECTADO COM O SERVER REFATORADO)
 ========================= */
-
 async function fecharServico() {
   if (!veiculoAtual) {
     mostrarStatus('Nenhum veículo selecionado', 'alerta');
     return;
   }
 
+  const kmValue = document.getElementById('km').value;
+  const servicoDesc = document.getElementById('servico').value;
+
+  const dadosServico = {
+    placa: veiculoAtual.placa,
+    km: parseInt(kmValue) || 0,
+    servico: servicoDesc,
+    pecas_trocadas: JSON.stringify(listaPecas),
+    valor_pecas: parseFloat(document.getElementById('valor_pecas').value) || 0,
+    valor_maodeobra:
+      parseFloat(document.getElementById('valor_maodeobra').value) || 0,
+    valor_total: parseFloat(document.getElementById('valor_total').value) || 0,
+  };
+
   try {
     const response = await fetch(`${API}/servico`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        placa: veiculoAtual.placa,
-        km: document.getElementById('km').value,
-        servico: document.getElementById('servico').value,
-        pecas_trocadas: JSON.stringify(listaPecas),
-        valor_pecas:
-          parseFloat(document.getElementById('valor_pecas').value) || 0,
-        valor_maodeobra:
-          parseFloat(document.getElementById('valor_maodeobra').value) || 0,
-        valor_total:
-          parseFloat(document.getElementById('valor_total').value) || 0,
-      }),
+      body: JSON.stringify(dadosServico),
     });
 
-    let result;
-
-    try {
-      result = await response.json();
-    } catch (e) {
-      mostrarStatus('Resposta inválida do servidor', 'erro');
-      return;
-    }
+    const result = await response.json();
 
     if (!response.ok) {
       mostrarStatus(result.erro || 'Erro ao salvar serviço', 'erro');
       return;
     }
 
-    mostrarStatus('Serviço fechado', 'sucesso');
+    mostrarStatus('Serviço fechado e KM atualizado!', 'sucesso');
 
+    // Limpar campos de serviço
+    document.getElementById('servico').value = '';
     listaPecas = [];
     renderizarPecas();
 
     carregarHistorico(veiculoAtual.placa);
-
     trocarAbaDireta('historico');
   } catch (err) {
     console.error(err);
@@ -362,149 +343,71 @@ async function fecharServico() {
 /* =========================
    HISTÓRICO
 ========================= */
-
 async function carregarHistorico(placa) {
   try {
     const response = await fetch(`${API}/servicos/${placa}`);
-
     const servicos = await response.json();
-
     const historico = document.getElementById('historico');
+    if (!historico) return;
 
     historico.innerHTML = '';
 
     if (servicos.length === 0) {
-      historico.innerHTML = `
-        <div class="servico-item">
-          Nenhum serviço encontrado
-        </div>
-      `;
-
+      historico.innerHTML = `<div class="servico-item">Nenhum serviço encontrado</div>`;
       return;
     }
 
     servicos.forEach((item, index) => {
       let pecasHTML = 'Nenhuma peça';
-
       try {
         const pecas = JSON.parse(item.pecas_trocadas || '[]');
-
         if (pecas.length > 0) {
           pecasHTML = pecas
             .map(
               (p) => `
-                <div class="historico-peca">
-                  <span>${p.nome}</span>
-                  <strong>R$ ${Number(p.valor).toFixed(2)}</strong>
-                </div>
-              `
+                        <div class="historico-peca">
+                            <span>${p.nome}</span>
+                            <strong>R$ ${Number(p.valor).toFixed(2)}</strong>
+                        </div>
+                    `
             )
             .join('');
         }
-      } catch {}
+      } catch (e) {}
 
       historico.innerHTML += `
-        <div class="servico-item">
-
-          <!-- CABEÇALHO -->
-
-          <div
-            class="historico-header"
-            onclick="toggleHistorico(${index})"
-          >
-
-            <div>
-
-              <strong>${item.data}</strong>
-
-              <p>
-                ${item.servico || 'Sem descrição'}
-              </p>
-
-            </div>
-
-            <div class="historico-header-right">
-
-              <strong>
-                R$ ${Number(item.valor_total || 0).toFixed(2)}
-              </strong>
-
-              <span id="seta-${index}">
-                ▼
-              </span>
-
-            </div>
-
-          </div>
-
-          <!-- CONTEÚDO -->
-
-          <div
-            class="historico-body"
-            id="historico-${index}"
-          >
-
-            <p>
-              <strong>KM:</strong>
-              ${item.km || 0}
-            </p>
-
-            <div class="historico-servico-box">
-
-              <strong>Serviço</strong>
-
-              <p>
-                ${item.servico || '-'}
-              </p>
-
-            </div>
-
-            <div class="historico-servico-box">
-
-              <strong>Peças</strong>
-
-              ${pecasHTML}
-
-            </div>
-
-            <div class="historico-valores">
-
-              <div>
-                <span>Peças</span>
-
-                <strong>
-                  R$ ${Number(item.valor_pecas || 0).toFixed(2)}
-                </strong>
-              </div>
-
-              <div>
-                <span>Mão de obra</span>
-
-                <strong>
-                  R$ ${Number(item.valor_maodeobra || 0).toFixed(2)}
-                </strong>
-              </div>
-
-              <div class="historico-total">
-
-                <span>Total</span>
-
-                <strong>
-                  R$ ${Number(item.valor_total || 0).toFixed(2)}
-                </strong>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
-      `;
+                <div class="servico-item">
+                    <div class="historico-header" onclick="toggleHistorico(${index})">
+                        <div>
+                            <strong>${item.data}</strong>
+                            <p>${item.servico || 'Sem descrição'}</p>
+                        </div>
+                        <div class="historico-header-right">
+                            <strong>R$ ${Number(item.valor_total || 0).toFixed(2)}</strong>
+                            <span id="seta-${index}">▼</span>
+                        </div>
+                    </div>
+                    <div class="historico-body" id="historico-${index}">
+                        <p><strong>KM:</strong> ${item.km || 0}</p>
+                        <div class="historico-servico-box">
+                            <strong>Serviço</strong>
+                            <p>${item.servico || '-'}</p>
+                        </div>
+                        <div class="historico-servico-box">
+                            <strong>Peças</strong>
+                            ${pecasHTML}
+                        </div>
+                        <div class="historico-valores">
+                            <div><span>Peças</span><strong>R$ ${Number(item.valor_pecas || 0).toFixed(2)}</strong></div>
+                            <div><span>Mão de obra</span><strong>R$ ${Number(item.valor_maodeobra || 0).toFixed(2)}</strong></div>
+                            <div class="historico-total"><span>Total</span><strong>R$ ${Number(item.valor_total || 0).toFixed(2)}</strong></div>
+                        </div>
+                    </div>
+                </div>
+            `;
     });
   } catch (err) {
     console.error(err);
-
     mostrarStatus('Erro ao carregar histórico', 'erro');
   }
 }
@@ -512,7 +415,6 @@ async function carregarHistorico(placa) {
 /* =========================
    WHATSAPP
 ========================= */
-
 function gerarWhatsApp() {
   if (!veiculoAtual) {
     mostrarStatus('Nenhum veículo carregado', 'alerta');
@@ -520,63 +422,27 @@ function gerarWhatsApp() {
   }
 
   const telefone = (veiculoAtual.telefone_cliente || '').replace(/\D/g, '');
-
   if (!telefone) {
     mostrarStatus('Telefone do cliente não encontrado', 'alerta');
     return;
   }
 
   const servico = document.getElementById('servico').value || 'Não informado';
-
-  const maoDeObra =
-    parseFloat(document.getElementById('valor_maodeobra').value) || 0;
-
-  const valorPecas =
-    parseFloat(document.getElementById('valor_pecas').value) || 0;
-
   const total = parseFloat(document.getElementById('valor_total').value) || 0;
 
-  /* LISTA DE PEÇAS */
+  let textoPecas =
+    listaPecas.length > 0
+      ? listaPecas
+          .map((p) => `• ${p.nome} — R$ ${p.valor.toFixed(2)}`)
+          .join('\n')
+      : 'Nenhuma peça adicionada';
 
-  let textoPecas = 'Nenhuma peça adicionada';
+  const texto = `Olá ${veiculoAtual.nome_cliente || ''} 👋\n\nSeu veículo foi finalizado.\n\n🚗 ${veiculoAtual.placa} - ${veiculoAtual.modelo || ''}\n\n🔧 Serviço:\n${servico}\n\n🧩 Peças:\n${textoPecas}\n\n💰 Total: R$ ${total.toFixed(2)}\n\nObrigado pela preferência.`;
 
-  if (listaPecas.length > 0) {
-    textoPecas = listaPecas
-      .map((p) => `• ${p.nome} — R$ ${p.valor.toFixed(2)}`)
-      .join('\n');
-  }
-
-  const texto = `
-Olá ${veiculoAtual.nome_cliente || ''} 👋
-
-Seu veículo foi finalizado com sucesso.
-
-🚗 Veículo:
-${veiculoAtual.placa} - ${veiculoAtual.modelo || ''}
-
-🔧 Serviço realizado:
-${servico}
-
-🧩 Peças utilizadas:
-${textoPecas}
-
-💰 Valores:
-
-Peças:
-R$ ${valorPecas.toFixed(2)}
-
-Mão de obra:
-R$ ${maoDeObra.toFixed(2)}
-
-Total:
-R$ ${total.toFixed(2)}
-
-Obrigado pela preferência.
-`;
-
-  const link = `https://wa.me/55${telefone}?text=${encodeURIComponent(texto)}`;
-
-  window.open(link, '_blank');
+  window.open(
+    `https://wa.me/55${telefone}?text=${encodeURIComponent(texto)}`,
+    '_blank'
+  );
 }
 
 function abrirWhatsRapido() {
@@ -584,32 +450,24 @@ function abrirWhatsRapido() {
     mostrarStatus('Nenhum veículo carregado', 'alerta');
     return;
   }
-
   const telefone = (veiculoAtual.telefone_cliente || '').replace(/\D/g, '');
-
   if (!telefone) {
     mostrarStatus('Telefone não encontrado', 'alerta');
     return;
   }
-
   window.open(`https://wa.me/55${telefone}`, '_blank');
 }
 
 /* =========================
-   ENTER BUSCA E PEÇAS
+   EVENTOS E UTILITÁRIOS
 ========================= */
-
 document.getElementById('buscar_placa').addEventListener('keypress', (e) => {
   if (e.key === 'Enter') buscarVeiculo();
 });
 
-document
-  .getElementById('peca_valor')
-  .addEventListener('keypress', function (e) {
-    if (e.key === 'Enter') {
-      adicionarPeca();
-    }
-  });
+document.getElementById('peca_valor').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') adicionarPeca();
+});
 
 function servicoRapido(texto) {
   document.getElementById('servico').value = texto;
@@ -618,32 +476,23 @@ function servicoRapido(texto) {
 
 function toggleHistorico(index) {
   const body = document.getElementById(`historico-${index}`);
-
   const seta = document.getElementById(`seta-${index}`);
-
-  body.classList.toggle('active');
-
-  if (body.classList.contains('active')) {
-    seta.innerText = '▲';
-  } else {
-    seta.innerText = '▼';
+  if (body) {
+    body.classList.toggle('active');
+    seta.innerText = body.classList.contains('active') ? '▲' : '▼';
   }
 }
 
-/* =========================
-   SEÇÕES GLOBAIS
-========================= */
-
 function trocarSecao(nome, event = null) {
-  document.querySelectorAll('.secao-global').forEach((secao) => {
-    secao.classList.remove('active');
-  });
+  document
+    .querySelectorAll('.secao-global')
+    .forEach((s) => s.classList.remove('active'));
+  document
+    .querySelectorAll('.sidebar-btn')
+    .forEach((b) => b.classList.remove('active'));
 
-  document.querySelectorAll('.sidebar-btn').forEach((btn) => {
-    btn.classList.remove('active');
-  });
-
-  document.getElementById(`secao-${nome}`).classList.add('active');
+  const secao = document.getElementById(`secao-${nome}`);
+  if (secao) secao.classList.add('active');
 
   if (event) {
     event.target.classList.add('active');
@@ -653,54 +502,28 @@ function trocarSecao(nome, event = null) {
 /* =========================
    CLIENTES
 ========================= */
-
 async function carregarClientes() {
   try {
     const response = await fetch(`${API}/veiculos`);
-
     const clientes = await response.json();
-
     const lista = document.getElementById('lista-clientes');
+    if (!lista) return;
 
     lista.innerHTML = '';
-
     clientes.forEach((cliente) => {
       lista.innerHTML += `
-    <tr
-      class="cliente-row"
-      onclick="abrirCliente('${cliente.placa}')"
-    >
-
-      <td>
-        ${cliente.nome_cliente || '-'}
-      </td>
-
-      <td>
-        ${cliente.placa || '-'}
-      </td>
-
-      <td>
-        ${cliente.modelo || '-'}
-      </td>
-      
-      <td>
-          ${cliente.ano || '-'}
-      </td>
-
-      <td>
-          ${cliente.perfil_tecnico || '-'}
-      </td>
-      
-      <td>
-        ${cliente.telefone_cliente || '-'}
-      </td>
-
-    </tr>
-  `;
+                <tr class="cliente-row" onclick="abrirCliente('${cliente.placa}')">
+                    <td>${cliente.nome_cliente || '-'}</td>
+                    <td>${cliente.placa || '-'}</td>
+                    <td>${cliente.modelo || '-'}</td>
+                    <td>${cliente.ano || '-'}</td>
+                    <td>${cliente.perfil_tecnico || '-'}</td>
+                    <td>${cliente.telefone_cliente || '-'}</td>
+                </tr>
+            `;
     });
   } catch (err) {
     console.error(err);
-
     mostrarStatus('Erro ao carregar clientes', 'erro');
   }
 }
@@ -708,51 +531,64 @@ async function carregarClientes() {
 async function abrirCliente(placa) {
   try {
     const response = await fetch(`${API}/veiculo/${placa}`);
-
     const data = await response.json();
-
     veiculoAtual = data;
-
     abrirVeiculo(data);
-
     trocarSecao('oficina');
 
-    document.querySelectorAll('.sidebar-btn').forEach((btn) => {
-      btn.classList.remove('active');
-    });
-
-    document.querySelector('.sidebar-btn').classList.add('active');
+    // Ativa o primeiro botão da sidebar
+    const firstBtn = document.querySelector('.sidebar-btn');
+    if (firstBtn) {
+      document
+        .querySelectorAll('.sidebar-btn')
+        .forEach((b) => b.classList.remove('active'));
+      firstBtn.classList.add('active');
+    }
 
     trocarAbaDireta('servico');
-
     mostrarStatus('Cliente carregado', 'sucesso');
   } catch (err) {
     console.error(err);
-
     mostrarStatus('Erro ao abrir cliente', 'erro');
   }
 }
 
-/* =========================
-   BUSCA CLIENTES
-========================= */
-
-document.getElementById('busca_cliente').addEventListener('input', function () {
-  const termo = this.value.toLowerCase();
-
-  const linhas = document.querySelectorAll('#lista-clientes tr');
-
-  linhas.forEach((linha) => {
-    const texto = linha.innerText.toLowerCase();
-
-    if (texto.includes(termo)) {
-      linha.style.display = 'table-row';
-    } else {
-      linha.style.display = 'none';
-    }
+// Filtro de busca de clientes
+const buscaClienteInput = document.getElementById('busca_cliente');
+if (buscaClienteInput) {
+  buscaClienteInput.addEventListener('input', function () {
+    const termo = this.value.toLowerCase();
+    const linhas = document.querySelectorAll('#lista-clientes tr');
+    linhas.forEach((linha) => {
+      linha.style.display = linha.innerText.toLowerCase().includes(termo)
+        ? 'table-row'
+        : 'none';
+    });
   });
+}
+
+// Seleciona o botão (quando você me passar o HTML, a gente ajusta o ID)
+const btnTheme = document.getElementById('theme-switch');
+
+// Função para alternar o tema
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light-mode');
+  localStorage.setItem('theme', isLight ? 'light' : 'dark');
+}
+
+// Rodar ao carregar a página
+window.addEventListener('DOMContentLoaded', () => {
+  const savedTheme = localStorage.getItem('theme');
+  const checkbox = document.querySelector('#checkbox');
+
+  if (savedTheme === 'light') {
+    document.body.classList.add('light-mode');
+    if (checkbox) checkbox.checked = true; // Mantém o switch ligado
+  }
 });
 
-/* carregar automaticamente */
+// Adiciona o evento de clique (ajustaremos conforme seu botão switch)
+// btnTheme.addEventListener('click', toggleTheme);
 
+// Inicialização
 carregarClientes();
