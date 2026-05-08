@@ -2,6 +2,126 @@ const API = window.location.origin;
 
 let veiculoAtual = null;
 let listaPecas = [];
+let timeoutAutoSave = null;
+let restaurandoRascunho = false;
+let bloqueandoAutoSave = false;
+
+/* =========================
+   ORÇAMENTO / RASCUNHO
+========================= */
+
+function chaveRascunho(placa) {
+  return `orcamento_${placa}`;
+}
+
+function getOrcamentoKey() {
+  if (!veiculoAtual?.placa) return null;
+
+  return chaveRascunho(veiculoAtual.placa);
+}
+
+function salvarRascunho() {
+  if (bloqueandoAutoSave) return;
+  if (restaurandoRascunho) return;
+  if (!veiculoAtual?.placa) return;
+
+  const dados = {
+    servico: document.getElementById('servico').value,
+
+    km: document.getElementById('km').value,
+
+    valor_maodeobra: document.getElementById('valor_maodeobra').value,
+
+    valor_pago: document.getElementById('valor_pago').value,
+
+    forma_pagamento: document.getElementById('forma_pagamento').value,
+
+    listaPecas,
+  };
+
+  localStorage.setItem(
+    chaveRascunho(veiculoAtual.placa),
+    JSON.stringify(dados)
+  );
+
+  console.log('SALVO:', chaveRascunho(veiculoAtual.placa), dados);
+}
+
+function restaurarRascunho(placa) {
+  const raw = localStorage.getItem(chaveRascunho(placa));
+
+  if (!raw) {
+    console.log('SEM RASCUNHO:', placa);
+    return;
+  }
+
+  try {
+    restaurandoRascunho = true;
+
+    const dados = JSON.parse(raw);
+
+    document.getElementById('servico').value = dados.servico || '';
+
+    document.getElementById('km').value = dados.km || '';
+
+    document.getElementById('valor_maodeobra').value =
+      dados.valor_maodeobra || '';
+
+    document.getElementById('valor_pago').value = dados.valor_pago || '';
+
+    document.getElementById('forma_pagamento').value =
+      dados.forma_pagamento || 'pendente';
+
+    listaPecas = dados.listaPecas || [];
+
+    renderizarPecas();
+
+    calcularTotal();
+
+    console.log('RASCUNHO RESTAURADO:', dados);
+
+    mostrarStatus('Rascunho restaurado', 'sucesso');
+
+    setTimeout(() => {
+      restaurandoRascunho = false;
+    }, 100);
+  } catch (err) {
+    restaurandoRascunho = false;
+    console.error(err);
+  }
+}
+
+function limparRascunho() {
+  if (!veiculoAtual?.placa) return;
+
+  localStorage.removeItem(chaveRascunho(veiculoAtual.placa));
+
+  document.getElementById('servico').value = '';
+
+  document.getElementById('km').value = veiculoAtual.km_atual || '';
+
+  document.getElementById('valor_maodeobra').value = '';
+
+  document.getElementById('valor_pago').value = '';
+
+  document.getElementById('forma_pagamento').value = 'pendente';
+
+  listaPecas = [];
+
+  renderizarPecas();
+
+  calcularTotal();
+
+  mostrarStatus('Orçamento limpo', 'sucesso');
+}
+
+function autoSalvarRascunho() {
+  clearTimeout(timeoutAutoSave);
+
+  timeoutAutoSave = setTimeout(() => {
+    salvarRascunho();
+  }, 500);
+}
 
 /* =========================
    STATUS
@@ -145,24 +265,61 @@ async function buscarVeiculo() {
    ABRIR VEÍCULO (AJUSTADO PARA KM_ATUAL)
 ========================= */
 function abrirVeiculo(data) {
+  bloqueandoAutoSave = true;
+
+  veiculoAtual = data;
+
   atualizarHeader(data);
 
-  // Preenche os campos de cadastro
+  // =========================
+  // DADOS DO VEÍCULO
+  // =========================
+
   document.getElementById('placa').value = data.placa || '';
+
   document.getElementById('nome_cliente').value = data.nome_cliente || '';
+
   document.getElementById('telefone_cliente').value =
     data.telefone_cliente || '';
+
   document.getElementById('modelo').value = data.modelo || '';
+
   document.getElementById('ano').value = data.ano || '';
+
   document.getElementById('perfil').value = data.perfil_tecnico || '';
 
-  // Preenche o KM atual na aba de serviço
-  const campoKm = document.getElementById('km');
-  if (campoKm) {
-    campoKm.value = data.km_atual || '';
+  // =========================
+  // LIMPA TELA SEM SAVE
+  // =========================
+
+  document.getElementById('servico').value = '';
+
+  document.getElementById('km').value = data.km_atual || '';
+
+  document.getElementById('valor_maodeobra').value = '';
+
+  listaPecas = [];
+
+  // NÃO chama renderizar ainda
+
+  // =========================
+  // RESTAURA RASCUNHO
+  // =========================
+
+  restaurarRascunho(data.placa);
+
+  // =========================
+  // SE NÃO EXISTIR RASCUNHO
+  // =========================
+
+  if (listaPecas.length === 0) {
+    renderizarPecas();
+    calcularTotal();
   }
 
   carregarHistorico(data.placa);
+
+  bloqueandoAutoSave = false;
 }
 
 /* =========================
@@ -225,6 +382,7 @@ function adicionarPeca() {
 
   listaPecas.push({ nome, valor });
   renderizarPecas();
+  salvarRascunho();
   document.getElementById('peca_nome').value = '';
   document.getElementById('peca_valor').value = '';
 }
@@ -232,6 +390,7 @@ function adicionarPeca() {
 function removerPeca(index) {
   listaPecas.splice(index, 1);
   renderizarPecas();
+  salvarRascunho();
 }
 
 function renderizarPecas() {
@@ -280,6 +439,10 @@ function calcularTotal() {
 
   const displayTotal = document.getElementById('valor_total_display');
   if (displayTotal) displayTotal.innerText = 'R$ ' + total;
+
+  if (!bloqueandoAutoSave && !restaurandoRascunho) {
+    salvarRascunho();
+  }
 }
 
 // Adiciona os ouvintes de evento apenas se os elementos existirem
@@ -309,6 +472,10 @@ async function fecharServico() {
     valor_maodeobra:
       parseFloat(document.getElementById('valor_maodeobra').value) || 0,
     valor_total: parseFloat(document.getElementById('valor_total').value) || 0,
+    valor_pago: parseFloat(document.getElementById('valor_pago').value) || 0,
+
+    forma_pagamento:
+      document.getElementById('forma_pagamento').value || 'pendente',
   };
 
   try {
@@ -327,12 +494,39 @@ async function fecharServico() {
 
     mostrarStatus('Serviço fechado e KM atualizado!', 'sucesso');
 
+    const key = getOrcamentoKey();
+
+    if (key) {
+      localStorage.removeItem(key);
+    }
+
+    localStorage.removeItem(chaveRascunho(veiculoAtual.placa));
+
     // Limpar campos de serviço
+    // Limpar campos de serviço
+
     document.getElementById('servico').value = '';
+
+    document.getElementById('km').value = veiculoAtual.km_atual || '';
+
+    document.getElementById('valor_maodeobra').value = '';
+
+    document.getElementById('valor_pago').value = '';
+
+    document.getElementById('forma_pagamento').value = 'pendente';
+
+    document.getElementById('peca_nome').value = '';
+
+    document.getElementById('peca_valor').value = '';
+
     listaPecas = [];
+
     renderizarPecas();
 
+    calcularTotal();
+
     carregarHistorico(veiculoAtual.placa);
+    carregarPendentes();
     trocarAbaDireta('historico');
   } catch (err) {
     console.error(err);
@@ -375,8 +569,16 @@ async function carregarHistorico(placa) {
         }
       } catch (e) {}
 
+      const total = Number(item.valor_total || 0);
+
+      const pago = Number(item.valor_pago || 0);
+
+      const restante = total - pago;
+
+      const status = item.status_pagamento || 'pendente';
+
       historico.innerHTML += `
-                <div class="servico-item">
+              <div class="servico-item" data-id="${item.id}">
                     <div class="historico-header" onclick="toggleHistorico(${index})">
                         <div>
                             <strong>${item.data}</strong>
@@ -400,15 +602,209 @@ async function carregarHistorico(placa) {
                         <div class="historico-valores">
                             <div><span>Peças</span><strong>R$ ${Number(item.valor_pecas || 0).toFixed(2)}</strong></div>
                             <div><span>Mão de obra</span><strong>R$ ${Number(item.valor_maodeobra || 0).toFixed(2)}</strong></div>
-                            <div class="historico-total"><span>Total</span><strong>R$ ${Number(item.valor_total || 0).toFixed(2)}</strong></div>
+                            <div class="historico-total">
+    <span>Total</span>
+    <strong>R$ ${total.toFixed(2)}</strong>
+</div>
+
+<div class="historico-financeiro">
+
+    <div>
+        <span>Pago</span>
+        <strong>
+            R$ ${pago.toFixed(2)}
+        </strong>
+    </div>
+
+    <div>
+        <span>Restante</span>
+        <strong>
+            R$ ${restante.toFixed(2)}
+        </strong>
+    </div>
+
+    <div>
+        <span>Status</span>
+
+        <strong class="status-${status}">
+            ${status.toUpperCase()}
+        </strong>
+    </div>
+
+    <div>
+        <span>Pagamento</span>
+
+        <strong>
+            ${item.forma_pagamento || '-'}
+        </strong>
+    </div>
+
+</div>
                         </div>
                     </div>
+                    
+                    <div class="historico-acoes">
+
+<button
+  class="btn-receber"
+  onclick="receberPagamento(
+    ${item.id},
+    ${restante},
+    '${item.placa}'
+  )"
+>
+  💰 Receber Pagamento
+</button>
+
+</div>
                 </div>
             `;
     });
   } catch (err) {
     console.error(err);
     mostrarStatus('Erro ao carregar histórico', 'erro');
+  }
+}
+
+async function carregarPendentes() {
+  try {
+    const response = await fetch(`${API}/pendentes`);
+
+    const pendentes = await response.json();
+
+    const container = document.getElementById('lista-pendentes');
+
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (pendentes.length === 0) {
+      container.innerHTML = `
+        <div class="servico-item">
+          Nenhuma pendência encontrada
+        </div>
+      `;
+      return;
+    }
+
+    pendentes.forEach((item) => {
+      const restante =
+        Number(item.valor_total || 0) - Number(item.valor_pago || 0);
+
+      container.innerHTML += `
+        <div 
+  class="servico-item pendencia-click"
+  onclick="abrirPendencia(${item.id}, '${item.placa}')"
+>
+
+          <div class="historico-header">
+
+            <div>
+              <strong>${item.placa}</strong>
+              <p>${item.servico || '-'}</p>
+            </div>
+
+            <div class="historico-header-right">
+              <strong>
+                R$ ${restante.toFixed(2)}
+              </strong>
+            </div>
+
+          </div>
+
+          <div class="historico-body active">
+
+            <p>
+              <strong>Total:</strong>
+              R$ ${Number(item.valor_total).toFixed(2)}
+            </p>
+
+            <p>
+              <strong>Pago:</strong>
+              R$ ${Number(item.valor_pago).toFixed(2)}
+            </p>
+
+            <p>
+              <strong>Status:</strong>
+              ${item.status_pagamento}
+            </p>
+
+          </div>
+
+        </div>
+      `;
+    });
+  } catch (err) {
+    console.error(err);
+
+    mostrarStatus('Erro ao carregar pendências', 'erro');
+  }
+}
+let recebimentoAtual = null;
+
+function receberPagamento(id, restante, placa) {
+  recebimentoAtual = {
+    id,
+    restante,
+  };
+
+  document.getElementById('modal-info-cliente').innerText =
+    `${placa} • Restante: R$ ${restante.toFixed(2)}`;
+
+  document.getElementById('modal-valor').value = restante.toFixed(2);
+
+  document.getElementById('modal-recebimento').classList.add('active');
+}
+
+function fecharModalRecebimento() {
+  document.getElementById('modal-recebimento').classList.remove('active');
+
+  recebimentoAtual = null;
+}
+
+async function confirmarRecebimento() {
+  if (!recebimentoAtual) return;
+
+  const valor = parseFloat(document.getElementById('modal-valor').value);
+
+  if (!valor || valor <= 0) {
+    mostrarStatus('Valor inválido', 'alerta');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API}/receber/${recebimentoAtual.id}`, {
+      method: 'PUT',
+
+      headers: {
+        'Content-Type': 'application/json',
+      },
+
+      body: JSON.stringify({
+        valor,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      mostrarStatus(result.erro || 'Erro ao receber', 'erro');
+      return;
+    }
+
+    fecharModalRecebimento();
+
+    mostrarStatus('Pagamento recebido', 'sucesso');
+
+    carregarPendentes();
+
+    if (veiculoAtual?.placa) {
+      carregarHistorico(veiculoAtual.placa);
+    }
+  } catch (err) {
+    console.error(err);
+
+    mostrarStatus('Servidor offline', 'erro');
   }
 }
 
@@ -445,6 +841,67 @@ function gerarWhatsApp() {
   );
 }
 
+function encaminharOrcamento() {
+  if (!veiculoAtual) {
+    mostrarStatus('Nenhum veículo carregado', 'alerta');
+    return;
+  }
+
+  const telefone = (veiculoAtual.telefone_cliente || '').replace(/\D/g, '');
+
+  if (!telefone) {
+    mostrarStatus('Telefone não encontrado', 'alerta');
+    return;
+  }
+
+  const servico = document.getElementById('servico').value || 'Não informado';
+
+  const maoDeObra =
+    parseFloat(document.getElementById('valor_maodeobra').value) || 0;
+
+  const total = parseFloat(document.getElementById('valor_total').value) || 0;
+
+  const km = document.getElementById('km').value || '-';
+
+  let textoPecas = 'Nenhuma peça adicionada';
+
+  if (listaPecas.length > 0) {
+    textoPecas = listaPecas
+      .map((p) => `• ${p.nome} — R$ ${p.valor.toFixed(2)}`)
+      .join('\n');
+  }
+
+  const texto = `
+📋 ORÇAMENTO PARA APROVAÇÃO
+
+👤 Cliente: ${veiculoAtual.nome_cliente || '-'}
+🚗 Veículo: ${veiculoAtual.modelo || '-'}
+🔖 Placa: ${veiculoAtual.placa}
+🛣️ KM: ${km}
+
+🔧 Serviço:
+${servico}
+
+🧩 Peças:
+${textoPecas}
+
+👨‍🔧 Mão de obra:
+R$ ${maoDeObra.toFixed(2)}
+
+💰 TOTAL:
+R$ ${total.toFixed(2)}
+
+Aguardando aprovação para execução do serviço.
+`;
+
+  window.open(
+    `https://wa.me/55${telefone}?text=${encodeURIComponent(texto)}`,
+    '_blank'
+  );
+
+  mostrarStatus('Orçamento encaminhado', 'sucesso');
+}
+
 function abrirWhatsRapido() {
   if (!veiculoAtual) {
     mostrarStatus('Nenhum veículo carregado', 'alerta');
@@ -471,6 +928,7 @@ document.getElementById('peca_valor').addEventListener('keypress', (e) => {
 
 function servicoRapido(texto) {
   document.getElementById('servico').value = texto;
+  salvarRascunho();
   document.getElementById('servico').focus();
 }
 
@@ -553,6 +1011,46 @@ async function abrirCliente(placa) {
   }
 }
 
+async function abrirPendencia(idServico, placa) {
+  try {
+    // abre cliente
+    await abrirCliente(placa);
+
+    // vai pra aba histórico
+    trocarAbaDireta('historico');
+
+    // espera renderizar
+    setTimeout(() => {
+      const cards = document.querySelectorAll('.servico-item');
+
+      cards.forEach((card) => {
+        if (card.dataset.id == idServico) {
+          const body = card.querySelector('.historico-body');
+
+          if (body) {
+            body.classList.add('active');
+          }
+
+          card.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          });
+
+          card.classList.add('highlight-pendente');
+
+          setTimeout(() => {
+            card.classList.remove('highlight-pendente');
+          }, 3000);
+        }
+      });
+    }, 300);
+  } catch (err) {
+    console.error(err);
+
+    mostrarStatus('Erro ao abrir pendência', 'erro');
+  }
+}
+
 // Filtro de busca de clientes
 const buscaClienteInput = document.getElementById('busca_cliente');
 if (buscaClienteInput) {
@@ -587,8 +1085,25 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// Adiciona o evento de clique (ajustaremos conforme seu botão switch)
-// btnTheme.addEventListener('click', toggleTheme);
+/* =========================
+   AUTOSAVE ORÇAMENTO
+========================= */
+
+[
+  'servico',
+  'km',
+  'valor_pecas',
+  'valor_maodeobra',
+  'valor_pago',
+  'forma_pagamento',
+].forEach((id) => {
+  const el = document.getElementById(id);
+
+  if (el) {
+    el.addEventListener('input', autoSalvarRascunho);
+  }
+});
 
 // Inicialização
 carregarClientes();
+carregarPendentes();

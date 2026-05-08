@@ -35,18 +35,32 @@ db.serialize(() => {
 
   // SERVIÇOS
   db.run(`
-    CREATE TABLE IF NOT EXISTS servicos (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      placa TEXT,
-      km INTEGER,
-      servico TEXT,
-      pecas_trocadas TEXT,
-      valor_pecas REAL,
-      valor_maodeobra REAL,
-      valor_total REAL,
-      data TEXT
-    )
-  `);
+  CREATE TABLE IF NOT EXISTS servicos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    placa TEXT,
+
+    km INTEGER,
+
+    servico TEXT,
+
+    pecas_trocadas TEXT,
+
+    valor_pecas REAL DEFAULT 0,
+
+    valor_maodeobra REAL DEFAULT 0,
+
+    valor_total REAL DEFAULT 0,
+
+    valor_pago REAL DEFAULT 0,
+
+    forma_pagamento TEXT,
+
+    status_pagamento TEXT DEFAULT 'pendente',
+
+    data TEXT
+  )
+`);
 });
 
 /* =========================
@@ -126,6 +140,8 @@ app.post('/servico', (req, res) => {
     valor_pecas,
     valor_maodeobra,
     valor_total,
+    valor_pago,
+    forma_pagamento,
   } = req.body;
   const placaLimpa = placa
     .toUpperCase()
@@ -134,10 +150,33 @@ app.post('/servico', (req, res) => {
   const dataAtual = new Date().toLocaleDateString('pt-BR');
   const kmNum = parseInt(km) || 0;
 
+  let status_pagamento = 'pendente';
+
+  const total = Number(valor_total || 0);
+  const pago = Number(valor_pago || 0);
+
+  if (pago >= total && total > 0) {
+    status_pagamento = 'pago';
+  } else if (pago > 0) {
+    status_pagamento = 'parcial';
+  }
+
   // Primeiro insere o histórico de serviço
   db.run(
-    `INSERT INTO servicos (placa, km, servico, pecas_trocadas, valor_pecas, valor_maodeobra, valor_total, data)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO servicos (
+  placa,
+  km,
+  servico,
+  pecas_trocadas,
+  valor_pecas,
+  valor_maodeobra,
+  valor_total,
+  valor_pago,
+  forma_pagamento,
+  status_pagamento,
+  data
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       placaLimpa,
       kmNum,
@@ -146,6 +185,13 @@ app.post('/servico', (req, res) => {
       parseFloat(valor_pecas) || 0,
       parseFloat(valor_maodeobra) || 0,
       parseFloat(valor_total) || 0,
+
+      pago,
+
+      forma_pagamento || 'pendente',
+
+      status_pagamento,
+
       dataAtual,
     ],
     function (err) {
@@ -182,6 +228,148 @@ app.get('/servicos/:placa', (req, res) => {
       res.json(rows);
     }
   );
+});
+
+// LISTAR SERVIÇOS PENDENTES
+app.get('/pendentes', (req, res) => {
+  db.all(
+    `
+    SELECT * FROM servicos
+    WHERE status_pagamento != 'pago'
+    ORDER BY id DESC
+    `,
+    [],
+    (err, rows) => {
+      if (err) {
+        return res.status(500).json({
+          erro: err.message,
+        });
+      }
+
+      res.json(rows);
+    }
+  );
+});
+
+app.post('/receber/:id', (req, res) => {
+  const id = req.params.id;
+
+  const valorRecebido = Number(req.body.valor || 0);
+
+  if (valorRecebido <= 0) {
+    return res.status(400).json({
+      erro: 'Valor inválido',
+    });
+  }
+
+  db.get(`SELECT * FROM servicos WHERE id = ?`, [id], (err, servico) => {
+    if (err) {
+      return res.status(500).json({
+        erro: err.message,
+      });
+    }
+
+    if (!servico) {
+      return res.status(404).json({
+        erro: 'Serviço não encontrado',
+      });
+    }
+
+    const novoValorPago = Number(servico.valor_pago || 0) + valorRecebido;
+
+    const total = Number(servico.valor_total || 0);
+
+    let novoStatus = 'pendente';
+
+    if (novoValorPago >= total) {
+      novoStatus = 'pago';
+    } else if (novoValorPago > 0) {
+      novoStatus = 'parcial';
+    }
+
+    db.run(
+      `
+        UPDATE servicos
+        SET
+          valor_pago = ?,
+          status_pagamento = ?
+        WHERE id = ?
+      `,
+      [novoValorPago, novoStatus, id],
+      function (errUpdate) {
+        if (errUpdate) {
+          return res.status(500).json({
+            erro: errUpdate.message,
+          });
+        }
+
+        res.json({
+          success: true,
+        });
+      }
+    );
+  });
+});
+
+/* =========================
+   PAGAR PENDÊNCIA
+========================= */
+
+app.put('/servico/:id/pagamento', (req, res) => {
+  const { id } = req.params;
+
+  const { valor_pago, forma_pagamento } = req.body;
+
+  db.get(`SELECT * FROM servicos WHERE id = ?`, [id], (err, servico) => {
+    if (err) {
+      return res.status(500).json({ erro: err.message });
+    }
+
+    if (!servico) {
+      return res.status(404).json({ erro: 'Serviço não encontrado' });
+    }
+
+    const pagoAtual = Number(servico.valor_pago || 0);
+
+    const novoPagamento = Number(valor_pago || 0);
+
+    const totalPago = pagoAtual + novoPagamento;
+
+    const valorTotal = Number(servico.valor_total || 0);
+
+    let status_pagamento = 'pendente';
+
+    if (totalPago >= valorTotal) {
+      status_pagamento = 'pago';
+    } else if (totalPago > 0) {
+      status_pagamento = 'parcial';
+    }
+
+    db.run(
+      `
+        UPDATE servicos
+        SET
+          valor_pago = ?,
+          forma_pagamento = ?,
+          status_pagamento = ?
+        WHERE id = ?
+        `,
+      [totalPago, forma_pagamento, status_pagamento, id],
+      function (errUpdate) {
+        if (errUpdate) {
+          return res.status(500).json({
+            erro: errUpdate.message,
+          });
+        }
+
+        res.json({
+          success: true,
+          total_pago: totalPago,
+          status_pagamento,
+        });
+      }
+    );
+  });
 });
 
 /* =========================

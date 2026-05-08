@@ -23,25 +23,19 @@ body.light-mode {
   --bg-sidebar: #f4f7fb;
   --bg-topbar: #f5f8fc;
 
-  /* Superfícies */
   --bg-card: #f5f8fc;
   --bg-item: #e1e8f2;
   --bg-input: #e9eff7;
 
-  /* Texto */
   --text-main: #0f172a;
   --text-secondary: #475569;
 
-  /* Bordas suaves */
   --border-color: #cbd5e1;
 
-  /* Botões neutros */
   --button-default: #dbe4f0;
 
-  /* 🔵 Accent principal (industrial blue) */
   --accent-primary: #2563eb;
 
-  /* Header mais frio, técnico */
   --accent-header: #dbeafe;
 }
 
@@ -60,10 +54,9 @@ body {
   overflow: hidden;
   transition:
     background 0.3s,
-    color 0.3s; /* Transição suave */
+    color 0.3s;
 }
 
-/* Aplique as variáveis nos seus seletores abaixo */
 .sidebar {
   background: var(--bg-sidebar);
   border-right: 1px solid var(--border-color);
@@ -741,6 +734,192 @@ button:hover {
   transition: 0.4s;
   width: 14px;
   border-radius: 50%;
+}
+
+.historico-financeiro {
+  margin-top: 14px;
+
+  display: grid;
+
+  grid-template-columns: repeat(2, 1fr);
+
+  gap: 10px;
+}
+
+.historico-financeiro div {
+  background: var(--card-secundario);
+
+  border-radius: 10px;
+
+  padding: 10px;
+}
+
+.status-pago {
+  color: #22c55e;
+}
+
+.status-parcial {
+  color: #facc15;
+}
+
+.status-pendente {
+  color: #ef4444;
+}
+
+.highlight-pendente {
+  animation: pulsePendencia 1s ease infinite alternate;
+}
+
+@keyframes pulsePendencia {
+  from {
+    transform: scale(1);
+    border-color: #666;
+  }
+
+  to {
+    transform: scale(1.01);
+    border-color: #f1c40f;
+  }
+}
+
+.pendencia-click {
+  cursor: pointer;
+}
+
+.historico-acoes {
+  margin-top: 18px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-receber {
+  border: none;
+  outline: none;
+
+  background: #27ae60;
+
+  color: white;
+
+  padding: 12px 18px;
+
+  border-radius: 12px;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease,
+    background 0.15s ease;
+
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-receber:hover {
+  transform: translateY(-2px);
+
+  opacity: 0.95;
+}
+
+.btn-receber:active {
+  transform: scale(0.98);
+}
+
+.modal-overlay {
+  position: fixed;
+
+  inset: 0;
+
+  background: rgba(0, 0, 0, 0.65);
+
+  display: none;
+
+  align-items: center;
+  justify-content: center;
+
+  z-index: 9999;
+
+  backdrop-filter: blur(4px);
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal-box {
+  width: 100%;
+  max-width: 420px;
+
+  background: var(--card-bg);
+
+  border: 1px solid var(--border-color);
+
+  border-radius: 20px;
+
+  padding: 24px;
+
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+}
+
+.modal-box h2 {
+  margin-bottom: 10px;
+}
+
+.modal-box p {
+  opacity: 0.7;
+
+  margin-bottom: 18px;
+}
+
+.modal-box input {
+  width: 100%;
+
+  padding: 14px;
+
+  border-radius: 12px;
+
+  border: 1px solid var(--border-color);
+
+  background: var(--input-bg);
+
+  color: var(--text-color);
+
+  font-size: 16px;
+
+  margin-bottom: 20px;
+}
+
+.modal-actions {
+  display: flex;
+
+  justify-content: flex-end;
+
+  gap: 10px;
+}
+
+.btn-cancelar,
+.btn-confirmar {
+  border: none;
+
+  padding: 12px 18px;
+
+  border-radius: 12px;
+
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.btn-cancelar {
+  background: #444;
+  color: white;
+}
+
+.btn-confirmar {
+  background: #27ae60;
+  color: white;
 }
 
 /* Quando o input está marcado (Ligado) */
