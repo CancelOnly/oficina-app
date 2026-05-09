@@ -251,11 +251,10 @@ app.get('/pendentes', (req, res) => {
   );
 });
 
-app.post('/receber/:id', (req, res) => {
+app.put('/receber/:id', (req, res) => {
   const id = req.params.id;
 
-  const valorRecebido = Number(req.body.valor || 0);
-
+  const valorRecebido = Number(req.body.valor || req.body.valor_pago || 0);
   if (valorRecebido <= 0) {
     return res.status(400).json({
       erro: 'Valor inválido',

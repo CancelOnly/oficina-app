@@ -15,6 +15,8 @@
   --button-default: #333;
   --accent-primary: #25d366; /* Verde WhatsApp */
   --accent-header: #1f4d2f; /* Verde Escuro */
+  --bg-badge-km: #2b2b2b;
+  --text-badge-km: #fff;
 }
 
 body.light-mode {
@@ -37,6 +39,20 @@ body.light-mode {
   --accent-primary: #2563eb;
 
   --accent-header: #dbeafe;
+  --bg-badge-km: #d1d9e6;
+  --text-badge-km: #334155;
+}
+
+.badge-km {
+  background: var(--bg-badge-km);
+  color: var(--text-badge-km);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* =========================
@@ -486,10 +502,11 @@ button:hover {
 ========================= */
 
 .servico-item {
-  background: var(--bg-input);
-  padding: 14px;
-  border-radius: 10px;
-  margin-top: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  margin-bottom: 15px;
+  overflow: hidden; /* Garante que o botão não saia da borda */
 }
 
 /* =========================
@@ -497,16 +514,18 @@ button:hover {
 ========================= */
 
 .historico-header {
+  padding: 15px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .historico-header p {
-  margin: 4px 0 0;
+  font-size: 0.9rem;
   color: var(--text-secondary);
-  font-size: 13px;
+  margin-top: 4px;
 }
 
 .historico-header-right {
@@ -532,7 +551,30 @@ button:hover {
   background: var(--bg-item);
   padding: 12px;
   border-radius: 8px;
-  margin-top: 10px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.status-pago,
+.status-pendente,
+.status-parcial {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.status-pago {
+  background: #1b4332;
+  color: #2ecc71;
+}
+.status-pendente {
+  background: #4a1c1c;
+  color: #e74c3c;
+}
+.status-parcial {
+  background: #4a3e1c;
+  color: #f1c40f;
 }
 
 .historico-servico-box strong {
@@ -563,9 +605,11 @@ button:hover {
 }
 
 .historico-total {
-  background: var(--accent-primary) !important;
-  color: black;
-  font-weight: bold;
+  border-top: 1px solid var(--border-color);
+  margin-top: 10px;
+  padding-top: 10px;
+  color: var(--accent-primary);
+  font-size: 1.1rem;
 }
 
 /* =========================
@@ -737,13 +781,27 @@ button:hover {
 }
 
 .historico-financeiro {
-  margin-top: 14px;
-
   display: grid;
-
-  grid-template-columns: repeat(2, 1fr);
-
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
+  margin-top: 15px;
+  padding: 12px;
+  background: rgba(
+    0,
+    0,
+    0,
+    0.05
+  ); /* No Dark fica escuro, no Light fica cinza leve */
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+}
+
+.historico-financeiro small {
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  letter-spacing: 0.5px;
 }
 
 .historico-financeiro div {
@@ -754,16 +812,26 @@ button:hover {
   padding: 10px;
 }
 
+/* Cores para os status no histórico */
 .status-pago {
-  color: #22c55e;
-}
-
-.status-parcial {
-  color: #facc15;
+  color: #2ecc71; /* Verde */
+  background: rgba(46, 204, 113, 0.1);
+  padding: 4px 8px;
+  border-radius: 6px;
 }
 
 .status-pendente {
-  color: #ef4444;
+  color: #e74c3c; /* Vermelho */
+  background: rgba(231, 76, 60, 0.1);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.status-parcial {
+  color: #f1c40f; /* Amarelo/Laranja */
+  background: rgba(241, 196, 15, 0.1);
+  padding: 4px 8px;
+  border-radius: 6px;
 }
 
 .highlight-pendente {
@@ -829,19 +897,14 @@ button:hover {
 
 .modal-overlay {
   position: fixed;
-
   inset: 0;
-
-  background: rgba(0, 0, 0, 0.65);
-
+  background: rgba(0, 0, 0, 0.75); /* Fundo escuro levemente mais forte */
   display: none;
-
   align-items: center;
   justify-content: center;
-
   z-index: 9999;
-
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(6px); /* O seu efeito de desfoque */
+  -webkit-backdrop-filter: blur(6px); /* Suporte para Safari */
 }
 
 .modal-overlay.active {
@@ -849,18 +912,19 @@ button:hover {
 }
 
 .modal-box {
-  width: 100%;
+  width: 90%; /* Melhor para mobile */
   max-width: 420px;
 
-  background: var(--card-bg);
+  /* AJUSTE AQUI: Usei --bg-card que é a variável que existe no seu :root */
+  background: var(--bg-card);
 
   border: 1px solid var(--border-color);
-
   border-radius: 20px;
-
   padding: 24px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
 
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+  /* Garante que o conteúdo dentro da caixa tenha opacidade total */
+  opacity: 1 !important;
 }
 
 .modal-box h2 {

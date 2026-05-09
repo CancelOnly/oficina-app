@@ -535,7 +535,7 @@ async function fecharServico() {
 }
 
 /* =========================
-   HISTÓRICO
+   HISTÓRICO 
 ========================= */
 async function carregarHistorico(placa) {
   try {
@@ -567,98 +567,80 @@ async function carregarHistorico(placa) {
             )
             .join('');
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error('Erro ao ler peças:', e);
+      }
 
       const total = Number(item.valor_total || 0);
-
       const pago = Number(item.valor_pago || 0);
-
       const restante = total - pago;
-
       const status = item.status_pagamento || 'pendente';
 
+      // LÓGICA DO BOTÃO: Só aparece se o status NÃO for 'pago'
+      let btnAcaoHTML = '';
+      if (status !== 'pago') {
+        btnAcaoHTML = `
+          <div class="historico-acoes">
+            <button
+              class="btn-receber"
+              onclick="receberPagamento(${item.id}, ${restante}, '${item.placa}')"
+            >
+              💰 Receber Pagamento
+            </button>
+          </div>
+        `;
+      }
+
+      const formaFormatada = item.forma_pagamento
+        ? item.forma_pagamento.charAt(0).toUpperCase() +
+          item.forma_pagamento.slice(1)
+        : '-';
+
       historico.innerHTML += `
-              <div class="servico-item" data-id="${item.id}">
-                    <div class="historico-header" onclick="toggleHistorico(${index})">
-                        <div>
-                            <strong>${item.data}</strong>
-                            <p>${item.servico || 'Sem descrição'}</p>
-                        </div>
-                        <div class="historico-header-right">
-                            <strong>R$ ${Number(item.valor_total || 0).toFixed(2)}</strong>
-                            <span id="seta-${index}">▼</span>
-                        </div>
-                    </div>
-                    <div class="historico-body" id="historico-${index}">
-                        <p><strong>KM:</strong> ${item.km || 0}</p>
-                        <div class="historico-servico-box">
-                            <strong>Serviço</strong>
-                            <p>${item.servico || '-'}</p>
-                        </div>
-                        <div class="historico-servico-box">
-                            <strong>Peças</strong>
-                            ${pecasHTML}
-                        </div>
-                        <div class="historico-valores">
-                            <div><span>Peças</span><strong>R$ ${Number(item.valor_pecas || 0).toFixed(2)}</strong></div>
-                            <div><span>Mão de obra</span><strong>R$ ${Number(item.valor_maodeobra || 0).toFixed(2)}</strong></div>
-                            <div class="historico-total">
-    <span>Total</span>
-    <strong>R$ ${total.toFixed(2)}</strong>
-</div>
-
-<div class="historico-financeiro">
-
-    <div>
-        <span>Pago</span>
-        <strong>
-            R$ ${pago.toFixed(2)}
-        </strong>
-    </div>
-
-    <div>
-        <span>Restante</span>
-        <strong>
-            R$ ${restante.toFixed(2)}
-        </strong>
-    </div>
-
-    <div>
-        <span>Status</span>
-
-        <strong class="status-${status}">
-            ${status.toUpperCase()}
-        </strong>
-    </div>
-
-    <div>
-        <span>Pagamento</span>
-
-        <strong>
-            ${item.forma_pagamento || '-'}
-        </strong>
-    </div>
-
-</div>
-                        </div>
-                    </div>
-                    
-                    <div class="historico-acoes">
-
-<button
-  class="btn-receber"
-  onclick="receberPagamento(
-    ${item.id},
-    ${restante},
-    '${item.placa}'
-  )"
->
-  💰 Receber Pagamento
-</button>
-
-</div>
+    <div class="servico-item" data-id="${item.id}">
+        <div class="historico-header" onclick="toggleHistorico(${index})">
+            <div>
+                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 6px;">
+                    <span style="font-size: 0.95rem; opacity: 0.85; font-weight: bold;">${item.data}</span>
+                    <span class="badge-km" style="font-size: 0.85rem; padding: 4px 10px;">📍 ${item.km || 0} KM</span>
                 </div>
-            `;
+                <p><strong style="font-size: 1.05rem;">${item.servico || 'Sem descrição'}</strong></p>
+            </div>
+            <div class="historico-header-right" style="text-align: right">
+                <strong style="color: var(--accent-primary); display: block; font-size: 1.2rem;">R$ ${total.toFixed(2)}</strong>
+                <span id="seta-${index}" style="font-size: 0.75rem; opacity: 0.6;">ver detalhes ▼</span>
+            </div>
+        </div>
+
+        <div class="historico-body" id="historico-${index}" style="padding: 0 15px 15px 15px;">
+            <div class="historico-servico-box" style="margin-top: 10px;">
+                <small style="opacity: 0.6; display: block; margin-bottom: 8px; font-weight: bold;">PEÇAS E COMPONENTES</small>
+                ${pecasHTML}
+            </div>
+
+            <div class="historico-financeiro">
+                <div>
+                    <small>Situação</small>
+                    <div style="margin-top:4px;"><span class="status-${status}">${status.toUpperCase()}</span></div>
+                </div>
+                <div>
+                    <small>Pago</small>
+                    <strong style="display:block; margin-top:4px;">R$ ${pago.toFixed(2)}</strong>
+                </div>
+                <div>
+                    <small>Restante</small>
+                    <strong style="display:block; margin-top:4px; color: ${restante > 0 ? '#ef4444' : 'inherit'}">R$ ${restante.toFixed(2)}</strong>
+                </div>
+                <div>
+                    <small>Forma</small>
+                    <span style="display:block; margin-top:4px; font-size: 0.95rem; font-weight: 500;">${formaFormatada}</span>
+                </div>
+            </div>
+        </div>
+
+        ${btnAcaoHTML}
+    </div>
+`;
     });
   } catch (err) {
     console.error(err);
@@ -742,18 +724,21 @@ async function carregarPendentes() {
 }
 let recebimentoAtual = null;
 
-function receberPagamento(id, restante, placa) {
-  recebimentoAtual = {
-    id,
-    restante,
-  };
+function receberPagamento(id, restante, identificador) {
+  recebimentoAtual = { id, restante };
 
-  document.getElementById('modal-info-cliente').innerText =
-    `${placa} • Restante: R$ ${restante.toFixed(2)}`;
+  const info = document.getElementById('modal-info-cliente');
+  const inputValor = document.getElementById('modal-valor');
+  const modal = document.getElementById('modal-recebimento');
 
-  document.getElementById('modal-valor').value = restante.toFixed(2);
+  if (info)
+    info.innerText = `Receber de: ${identificador} • Restante: R$ ${restante.toFixed(2)}`;
+  if (inputValor) inputValor.value = restante.toFixed(2);
 
-  document.getElementById('modal-recebimento').classList.add('active');
+  modal.style.display = 'flex'; // Garante que o display mude
+  modal.classList.add('active');
+
+  setTimeout(() => inputValor.select(), 100); // Seleciona o valor para facilitar a digitação
 }
 
 function fecharModalRecebimento() {
@@ -765,46 +750,43 @@ function fecharModalRecebimento() {
 async function confirmarRecebimento() {
   if (!recebimentoAtual) return;
 
-  const valor = parseFloat(document.getElementById('modal-valor').value);
+  const valorInput = document.getElementById('modal-valor');
+  const valor = parseFloat(valorInput.value);
 
-  if (!valor || valor <= 0) {
-    mostrarStatus('Valor inválido', 'alerta');
+  if (isNaN(valor) || valor <= 0) {
+    mostrarStatus('Por favor, digite um valor válido.', 'alerta');
     return;
   }
 
   try {
+    // Enviando PUT para a rota /receber/:id
     const response = await fetch(`${API}/receber/${recebimentoAtual.id}`, {
       method: 'PUT',
-
-      headers: {
-        'Content-Type': 'application/json',
-      },
-
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        valor,
+        valor_pago: valor, // Alinhado com o que o server.js espera
       }),
     });
 
     const result = await response.json();
 
     if (!response.ok) {
-      mostrarStatus(result.erro || 'Erro ao receber', 'erro');
+      mostrarStatus(result.erro || 'Erro ao processar pagamento', 'erro');
       return;
     }
 
+    // Sucesso
     fecharModalRecebimento();
+    mostrarStatus('Pagamento registrado com sucesso!', 'sucesso');
 
-    mostrarStatus('Pagamento recebido', 'sucesso');
-
+    // Atualiza a lista de pendentes e o histórico
     carregarPendentes();
-
-    if (veiculoAtual?.placa) {
+    if (veiculoAtual && veiculoAtual.placa) {
       carregarHistorico(veiculoAtual.placa);
     }
   } catch (err) {
-    console.error(err);
-
-    mostrarStatus('Servidor offline', 'erro');
+    console.error('Erro na requisição:', err);
+    mostrarStatus('Erro de conexão com o servidor.', 'erro');
   }
 }
 
