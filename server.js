@@ -83,14 +83,16 @@ app.get('/veiculo/:placa', (req, res) => {
 
 // LISTAR TODOS OS VEÍCULOS (CLIENTES)
 app.get('/veiculos', (req, res) => {
-  db.all(
-    `SELECT * FROM veiculos ORDER BY nome_cliente ASC`,
-    [],
-    (err, rows) => {
-      if (err) return res.status(500).json({ erro: err.message });
-      res.json(rows);
-    }
-  );
+  const sql = `
+    SELECT v.*, 
+    (SELECT data FROM servicos WHERE placa = v.placa ORDER BY id DESC LIMIT 1) as data_ultimo_servico
+    FROM veiculos v
+    ORDER BY v.nome_cliente ASC
+  `;
+  db.all(sql, [], (err, rows) => {
+    if (err) return res.status(500).json({ erro: err.message });
+    res.json(rows);
+  });
 });
 
 // CADASTRAR OU EDITAR VEÍCULO
@@ -307,6 +309,55 @@ app.put('/receber/:id', (req, res) => {
         });
       }
     );
+  });
+});
+
+// Rota de Financeiro - Versão Final corrigida
+app.get('/estatisticas', (req, res) => {
+  // 1. Query para os Cards (Resumo)
+  const sqlGeral = `
+    SELECT 
+      SUM(valor_total) as faturamento, 
+      SUM(valor_pago) as recebido 
+    FROM servicos`;
+
+  // 2. Query para o Gráfico (Últimos 7 dias)
+  // Mudamos a lógica: pegamos os últimos 7 registros e tratamos a data no JS
+  const sqlGrafico = `
+    SELECT data, SUM(valor_total) as total_dia
+    FROM servicos
+    GROUP BY data
+    ORDER BY id DESC
+    LIMIT 7`;
+
+  db.get(sqlGeral, [], (err, resumo) => {
+    if (err) {
+      console.error('Erro no Banco (Geral):', err.message);
+      return res.status(500).json({ erro: err.message });
+    }
+
+    db.all(sqlGrafico, [], (err, rows) => {
+      if (err) {
+        console.error('Erro no Banco (Gráfico):', err.message);
+        return res.status(500).json({ erro: err.message });
+      }
+
+      // Se o banco estiver vazio, garantimos que não retorne 'null'
+      const resposta = {
+        resumo: {
+          faturamento: resumo.faturamento || 0,
+          recebido: resumo.recebido || 0,
+        },
+        grafico: rows
+          ? rows.reverse().map((r) => ({
+              dia: r.data,
+              total_dia: r.total_dia,
+            }))
+          : [],
+      };
+
+      res.json(resposta);
+    });
   });
 });
 

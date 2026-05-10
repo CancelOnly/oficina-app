@@ -5,6 +5,17 @@ let listaPecas = [];
 let timeoutAutoSave = null;
 let restaurandoRascunho = false;
 let bloqueandoAutoSave = false;
+let modalIdAtual = null;
+let clientesCache = [];
+let colunaAtual = '';
+let ordemCrescente = true;
+let botoesServicoRapido = JSON.parse(
+  localStorage.getItem('config_atalhos')
+) || ['Óleo', 'Revisão', 'Freios', 'Suspensão'];
+const DDD_PADRAO = '54'; // Caxias do Sul
+let meuGrafico = null;
+let periodoAtual = 'semanal';
+let recebimentoAtual = null;
 
 /* =========================
    ORÇAMENTO / RASCUNHO
@@ -153,6 +164,14 @@ function trocarAba(nome, event = null) {
   const abaAlvo = document.getElementById(`aba-${nome}`);
   if (abaAlvo) abaAlvo.classList.add('active');
 
+  if (nome === 'servico') {
+    renderizarBotoesAtalho();
+  }
+
+  if (nome === 'dashboard') {
+    atualizarDashboard();
+  }
+
   if (event) {
     event.target.classList.add('active');
   } else {
@@ -266,51 +285,46 @@ async function buscarVeiculo() {
 ========================= */
 function abrirVeiculo(data) {
   bloqueandoAutoSave = true;
-
   veiculoAtual = data;
 
   atualizarHeader(data);
 
-  // =========================
-  // DADOS DO VEÍCULO
-  // =========================
-
+  // Dados Cadastrais
   document.getElementById('placa').value = data.placa || '';
-
   document.getElementById('nome_cliente').value = data.nome_cliente || '';
 
-  document.getElementById('telefone_cliente').value =
-    data.telefone_cliente || '';
+  const dddCampo = document.getElementById('ddd_cliente');
+  const telCampo = document.getElementById('tel_cliente');
+
+  if (data.telefone_cliente) {
+    let telLimpo = data.telefone_cliente.toString().replace(/^55/, '');
+    dddCampo.value = telLimpo.substring(0, 2);
+    telCampo.value = telLimpo.substring(2);
+  } else {
+    dddCampo.value = '54';
+    telCampo.value = '';
+  }
 
   document.getElementById('modelo').value = data.modelo || '';
-
   document.getElementById('ano').value = data.ano || '';
-
   document.getElementById('perfil').value = data.perfil_tecnico || '';
 
-  // =========================
-  // LIMPA TELA SEM SAVE
-  // =========================
-
+  // Limpa campos de serviço
   document.getElementById('servico').value = '';
-
-  document.getElementById('km').value = data.km_atual || '';
-
   document.getElementById('valor_maodeobra').value = '';
-
   listaPecas = [];
 
-  // NÃO chama renderizar ainda
+  // PRIORIDADE: Primeiro coloca o KM do banco de dados
+  const kmInput = document.getElementById('km');
+  kmInput.value = data.km_atual || '';
 
-  // =========================
-  // RESTAURA RASCUNHO
-  // =========================
-
+  // RESTAURA RASCUNHO (Mas só muda o KM se o rascunho tiver um valor real)
   restaurarRascunho(data.placa);
 
-  // =========================
-  // SE NÃO EXISTIR RASCUNHO
-  // =========================
+  // Garantia: Se após restaurar o rascunho o KM ficou vazio, volta o KM do banco
+  if (!kmInput.value || kmInput.value == '0') {
+    kmInput.value = data.km_atual || '';
+  }
 
   if (listaPecas.length === 0) {
     renderizarPecas();
@@ -318,7 +332,6 @@ function abrirVeiculo(data) {
   }
 
   carregarHistorico(data.placa);
-
   bloqueandoAutoSave = false;
 }
 
@@ -326,45 +339,78 @@ function abrirVeiculo(data) {
    CADASTRO (CORRIGIDO)
 ========================= */
 async function salvarCadastro() {
-  const placa = document.getElementById('placa').value;
+  bloqueandoAutoSave = true;
+
+  const placa = document.getElementById('placa').value.toUpperCase().trim();
+  const nome = document.getElementById('nome_cliente').value.trim();
+  const modelo = document.getElementById('modelo').value.trim();
   const ano = document.getElementById('ano').value;
+  const perfil = document.getElementById('perfil').value;
+  const dddRaw = document
+    .getElementById('ddd_cliente')
+    .value.replace(/\D/g, '');
+  const telRaw = document
+    .getElementById('tel_cliente')
+    .value.replace(/\D/g, '');
 
   if (!placa) {
-    mostrarStatus('Placa é obrigatória', 'alerta');
+    mostrarStatus('A placa é obrigatória!', 'alerta');
+    bloqueandoAutoSave = false;
     return;
   }
 
-  if (ano && ano.length !== 4) {
-    mostrarStatus('Ano deve ter 4 dígitos', 'alerta');
-    return;
-  }
-
-  const body = {
-    placa: placa,
-    nome_cliente: document.getElementById('nome_cliente').value,
-    telefone_cliente: document.getElementById('telefone_cliente').value,
-    modelo: document.getElementById('modelo').value,
-    ano: parseInt(ano) || 0, // Garante que o ano vá como número
-    perfil_tecnico: document.getElementById('perfil').value,
+  const dadosVeiculo = {
+    placa,
+    nome_cliente: nome,
+    telefone_cliente: telRaw ? `55${dddRaw}${telRaw}` : '',
+    modelo,
+    ano: parseInt(ano) || null,
+    perfil_tecnico: perfil,
   };
 
   try {
+    // 1. SALVA NO SERVIDOR
     const response = await fetch(`${API}/veiculo`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify(dadosVeiculo),
     });
 
-    if (!response.ok) throw new Error('Erro ao salvar');
+    if (response.ok) {
+      // 2. ATUALIZA O ESTADO GLOBAL (Isso corrige o Header)
+      veiculoAtual = dadosVeiculo;
+      atualizarHeader(veiculoAtual);
 
-    veiculoAtual = body;
-    atualizarHeader(body);
-    mostrarStatus('Cadastro salvo', 'sucesso');
-    carregarClientes();
-    trocarAbaDireta('servico');
+      // 3. SINCRONIZA A LISTA DE CLIENTES
+      await carregarClientes();
+
+      mostrarStatus('Cadastro salvo no banco de dados!', 'sucesso');
+
+      // 4. MUDA PARA A ABA DE SERVIÇO AUTOMATICAMENTE
+      // Isso evita que o usuário fique travado na tela de cadastro
+      setTimeout(() => {
+        trocarAbaDireta('servico');
+        // Foca no campo de serviço para agilizar o trabalho
+        document.getElementById('servico').focus();
+      }, 500);
+    } else {
+      mostrarStatus('Erro ao salvar no servidor', 'erro');
+    }
   } catch (err) {
     console.error(err);
-    mostrarStatus('Erro ao salvar cadastro', 'erro');
+    mostrarStatus('Erro de conexão', 'erro');
+  } finally {
+    bloqueandoAutoSave = false;
+  }
+}
+
+// Função auxiliar para mostrar o status (opcional)
+function mostrarStatus(msg) {
+  const statusDiv = document.getElementById('status');
+  if (statusDiv) {
+    statusDiv.innerText = msg;
+    statusDiv.classList.add('show');
+    setTimeout(() => statusDiv.classList.remove('show'), 3000);
   }
 }
 
@@ -422,6 +468,19 @@ function renderizarPecas() {
   calcularTotal();
 }
 
+function validarKilometragem() {
+  const kmInformado = parseInt(document.getElementById('km').value);
+  const kmAnterior = parseInt(veiculoAtual?.km_atual) || 0;
+
+  if (kmInformado < kmAnterior) {
+    alert(
+      `⚠️ Erro na KM! A última registrada foi ${kmAnterior} km. O valor atual não pode ser menor.`
+    );
+    return false;
+  }
+  return true;
+}
+
 /* =========================
    TOTAL
 ========================= */
@@ -459,21 +518,56 @@ async function fecharServico() {
     mostrarStatus('Nenhum veículo selecionado', 'alerta');
     return;
   }
+  const valorTotal =
+    parseFloat(document.getElementById('valor_total').value) || 0;
 
-  const kmValue = document.getElementById('km').value;
-  const servicoDesc = document.getElementById('servico').value;
+  if (valorTotal <= 0) {
+    mostrarStatus('O valor total do serviço não pode ser R$ 0,00', 'alerta');
+    document.getElementById('valor_maodeobra').focus();
+    return;
+  }
+
+  const nPeca = document.getElementById('peca_nome').value.trim();
+  const vPeca = document.getElementById('peca_valor').value.trim();
+
+  if (nPeca !== '' || vPeca !== '') {
+    const modalAlerta = document.getElementById('modal-alerta-peca');
+    const msgAlerta = document.getElementById('msg-alerta-peca');
+    msgAlerta.innerHTML = `Você digitou <strong>"${nPeca || 'uma peça'}"</strong> mas não clicou em adicionar.<br><br>Deseja voltar ou descartar essa peça e finalizar?`;
+    modalAlerta.classList.add('active');
+    modalAlerta.style.setProperty('display', 'flex', 'important');
+    return;
+  }
+
+  const kmInput = document.getElementById('km');
+  const kmInformado = parseInt(kmInput.value) || 0;
+  const kmAnterior = parseInt(veiculoAtual.km_atual) || 0;
+
+  // ==========================================
+  // TRAVA DE SEGURANÇA REFORÇADA
+  // ==========================================
+  if (kmInformado <= 0) {
+    mostrarStatus('Por favor, informe a KM atual!', 'alerta');
+    kmInput.focus();
+    return;
+  }
+
+  if (kmInformado < kmAnterior) {
+    mostrarStatus(`KM inválida! A última foi ${kmAnterior}.`, 'alerta');
+    return;
+  }
+  // ==========================================
 
   const dadosServico = {
     placa: veiculoAtual.placa,
-    km: parseInt(kmValue) || 0,
-    servico: servicoDesc,
+    km: kmInformado,
+    servico: document.getElementById('servico').value,
     pecas_trocadas: JSON.stringify(listaPecas),
     valor_pecas: parseFloat(document.getElementById('valor_pecas').value) || 0,
     valor_maodeobra:
       parseFloat(document.getElementById('valor_maodeobra').value) || 0,
     valor_total: parseFloat(document.getElementById('valor_total').value) || 0,
     valor_pago: parseFloat(document.getElementById('valor_pago').value) || 0,
-
     forma_pagamento:
       document.getElementById('forma_pagamento').value || 'pendente',
   };
@@ -492,39 +586,28 @@ async function fecharServico() {
       return;
     }
 
+    // Sincroniza a nova KM
+    veiculoAtual.km_atual = kmInformado;
     mostrarStatus('Serviço fechado e KM atualizado!', 'sucesso');
 
+    carregarClientes();
+
     const key = getOrcamentoKey();
-
-    if (key) {
-      localStorage.removeItem(key);
-    }
-
+    if (key) localStorage.removeItem(key);
     localStorage.removeItem(chaveRascunho(veiculoAtual.placa));
 
-    // Limpar campos de serviço
-    // Limpar campos de serviço
-
+    // Limpeza de campos
     document.getElementById('servico').value = '';
-
-    document.getElementById('km').value = veiculoAtual.km_atual || '';
-
+    document.getElementById('km').value = veiculoAtual.km_atual; // Mantém a nova KM no campo
     document.getElementById('valor_maodeobra').value = '';
-
     document.getElementById('valor_pago').value = '';
-
     document.getElementById('forma_pagamento').value = 'pendente';
-
     document.getElementById('peca_nome').value = '';
-
     document.getElementById('peca_valor').value = '';
 
     listaPecas = [];
-
     renderizarPecas();
-
     calcularTotal();
-
     carregarHistorico(veiculoAtual.placa);
     carregarPendentes();
     trocarAbaDireta('historico');
@@ -651,174 +734,206 @@ async function carregarHistorico(placa) {
 async function carregarPendentes() {
   try {
     const response = await fetch(`${API}/pendentes`);
-
     const pendentes = await response.json();
-
     const container = document.getElementById('lista-pendentes');
 
     if (!container) return;
-
     container.innerHTML = '';
 
     if (pendentes.length === 0) {
       container.innerHTML = `
-        <div class="servico-item">
-          Nenhuma pendência encontrada
-        </div>
-      `;
+        <div class="servico-item" style="padding: 20px; text-align: center; color: var(--text-secondary);">
+          🎉 Nenhuma pendência encontrada!
+        </div>`;
       return;
     }
 
     pendentes.forEach((item) => {
-      const restante =
-        Number(item.valor_total || 0) - Number(item.valor_pago || 0);
+      const total = Number(item.valor_total || 0);
+      const pago = Number(item.valor_pago || 0);
+      const restante = total - pago;
 
+      // Usando a estrutura exata que o seu CSS (.servico-item, .historico-header) espera
       container.innerHTML += `
-        <div 
-  class="servico-item pendencia-click"
-  onclick="abrirPendencia(${item.id}, '${item.placa}')"
->
-
+        <div class="servico-item pendencia-click highlight-pendente" 
+             onclick="abrirPendencia(${item.id}, '${item.placa}')"
+             style="margin-bottom: 12px;">
+          
           <div class="historico-header">
-
             <div>
-              <strong>${item.placa}</strong>
-              <p>${item.servico || '-'}</p>
+              <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 4px;">
+                <span class="badge-km" style="background: var(--accent-primary); color: black;">${item.placa}</span>
+                <span style="font-size: 0.8rem; opacity: 0.7;">${item.data || ''}</span>
+              </div>
+              <strong style="font-size: 1.05rem;">${item.servico || 'Serviço sem descrição'}</strong>
             </div>
-
+            
             <div class="historico-header-right">
-              <strong>
-                R$ ${restante.toFixed(2)}
-              </strong>
+              <small style="display: block; font-size: 0.7rem; color: var(--text-secondary);">FALTA PAGAR</small>
+              <strong style="color: #ef4444; font-size: 1.2rem;">R$ ${restante.toFixed(2)}</strong>
+              <span style="font-size: 0.7rem; opacity: 0.6;">clique para abrir ▼</span>
             </div>
-
           </div>
 
-          <div class="historico-body active">
-
-            <p>
-              <strong>Total:</strong>
-              R$ ${Number(item.valor_total).toFixed(2)}
-            </p>
-
-            <p>
-              <strong>Pago:</strong>
-              R$ ${Number(item.valor_pago).toFixed(2)}
-            </p>
-
-            <p>
-              <strong>Status:</strong>
-              ${item.status_pagamento}
-            </p>
-
+          <div class="historico-body" style="padding: 0 15px 15px 15px; display: block; opacity: 0.8;">
+             <div style="display: flex; justify-content: space-between; font-size: 0.85rem; border-top: 1px solid var(--border-color); pt-10px; margin-top: 10px; padding-top: 10px;">
+                <span>Total: R$ ${total.toFixed(2)}</span>
+                <span>Já pago: R$ ${pago.toFixed(2)}</span>
+             </div>
           </div>
-
         </div>
       `;
     });
   } catch (err) {
     console.error(err);
-
     mostrarStatus('Erro ao carregar pendências', 'erro');
   }
 }
-let recebimentoAtual = null;
 
 function receberPagamento(id, restante, identificador) {
-  recebimentoAtual = { id, restante };
+  // CRÍTICO: Atualiza o ID para a OS que você acabou de clicar
+  recebimentoAtual = { id: id, restante: restante };
+
+  // Se você estiver usando modalIdAtual em vez de recebimentoAtual no confirmar:
+  modalIdAtual = id;
 
   const info = document.getElementById('modal-info-cliente');
   const inputValor = document.getElementById('modal-valor');
   const modal = document.getElementById('modal-recebimento');
 
-  if (info)
+  if (info) {
     info.innerText = `Receber de: ${identificador} • Restante: R$ ${restante.toFixed(2)}`;
-  if (inputValor) inputValor.value = restante.toFixed(2);
+  }
 
-  modal.style.display = 'flex'; // Garante que o display mude
-  modal.classList.add('active');
+  if (inputValor) {
+    inputValor.value = restante.toFixed(2);
+  }
 
-  setTimeout(() => inputValor.select(), 100); // Seleciona o valor para facilitar a digitação
+  // Abre o modal
+  if (modal) {
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+  }
+
+  setTimeout(() => {
+    if (inputValor) inputValor.select();
+  }, 100);
 }
 
 function fecharModalRecebimento() {
-  document.getElementById('modal-recebimento').classList.remove('active');
-
+  const modal = document.getElementById('modal-recebimento');
+  if (modal) {
+    modal.classList.remove('active');
+    modal.style.display = 'none';
+  }
   recebimentoAtual = null;
+  modalIdAtual = null;
+}
+
+// Funções de controle do Modal
+function fecharModalAlerta() {
+  const modal = document.getElementById('modal-alerta-peca');
+  modal.classList.remove('active');
+  modal.style.setProperty('display', 'none', 'important');
+}
+
+function limparCamposPecaEFechar() {
+  document.getElementById('peca_nome').value = '';
+  document.getElementById('peca_valor').value = '';
+  fecharModalAlerta();
+
+  // Pequeno delay para o modal sumir antes de processar o fechamento
+  setTimeout(() => {
+    fecharServico();
+  }, 50);
 }
 
 async function confirmarRecebimento() {
-  if (!recebimentoAtual) return;
-
   const valorInput = document.getElementById('modal-valor');
-  const valor = parseFloat(valorInput.value);
+  const valor = valorInput ? parseFloat(valorInput.value) : 0;
+  const id = recebimentoAtual ? recebimentoAtual.id : null;
 
-  if (isNaN(valor) || valor <= 0) {
-    mostrarStatus('Por favor, digite um valor válido.', 'alerta');
+  if (!id || isNaN(valor) || valor <= 0) {
+    mostrarStatus('Dados inválidos para recebimento', 'alerta');
     return;
   }
 
   try {
-    // Enviando PUT para a rota /receber/:id
-    const response = await fetch(`${API}/receber/${recebimentoAtual.id}`, {
-      method: 'PUT',
+    const response = await fetch(`${API}/receber/${id}`, {
+      method: 'PUT', // Conforme o seu server.js
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        valor_pago: valor, // Alinhado com o que o server.js espera
-      }),
+      body: JSON.stringify({ valor: valor }),
     });
 
-    const result = await response.json();
+    if (response.ok) {
+      // 1. Mostra o sucesso
+      mostrarStatus(
+        'Pagamento de R$ ' + valor.toFixed(2) + ' registrado!',
+        'sucesso'
+      );
 
-    if (!response.ok) {
-      mostrarStatus(result.erro || 'Erro ao processar pagamento', 'erro');
-      return;
-    }
+      // 2. Fecha o modal imediatamente
+      fecharModalRecebimento();
 
-    // Sucesso
-    fecharModalRecebimento();
-    mostrarStatus('Pagamento registrado com sucesso!', 'sucesso');
+      // 3. ATUALIZAÇÃO CRÍTICA: Recarrega as listas do servidor
+      // Isso vai fazer a pendência de 1200 virar 600 na tela
+      carregarPendentes();
 
-    // Atualiza a lista de pendentes e o histórico
-    carregarPendentes();
-    if (veiculoAtual && veiculoAtual.placa) {
-      carregarHistorico(veiculoAtual.placa);
+      if (veiculoAtual) {
+        carregarHistorico(veiculoAtual.placa);
+      }
+    } else {
+      const erroServidor = await response.json();
+      mostrarStatus(erroServidor.erro || 'Erro ao processar pagamento', 'erro');
     }
   } catch (err) {
-    console.error('Erro na requisição:', err);
-    mostrarStatus('Erro de conexão com o servidor.', 'erro');
+    console.error('Erro ao confirmar:', err);
+    mostrarStatus('Erro de conexão com o servidor', 'erro');
   }
 }
 
 /* =========================
    WHATSAPP
 ========================= */
+function formatarTelefoneBrasil(tel) {
+  // Remove tudo que não for número
+  let num = tel.replace(/\D/g, '');
+
+  // Se o usuário digitou apenas o número (8 ou 9 dígitos), põe o 55 + DDD_PADRAO
+  if (num.length === 8 || num.length === 9) {
+    num = '55' + DDD_PADRAO + num;
+  }
+  // Se o usuário digitou com DDD (10 ou 11 dígitos), põe apenas o 55
+  else if (num.length === 10 || num.length === 11) {
+    num = '55' + num;
+  }
+
+  return num;
+}
+
+// Ajuste na sua função de salvarCadastro (trecho do body)
+// ... dentro da salvarCadastro() ...
+const body = {
+  // ... outros campos ...
+  telefone_cliente: formatarTelefoneBrasil(
+    document.getElementById('telefone_cliente').value
+  ),
+  // ...
+};
+
 function gerarWhatsApp() {
-  if (!veiculoAtual) {
-    mostrarStatus('Nenhum veículo carregado', 'alerta');
-    return;
-  }
+  if (!veiculoAtual) return;
 
+  // Como o telefone já foi salvo com 55 + DDD no banco, usamos direto
   const telefone = (veiculoAtual.telefone_cliente || '').replace(/\D/g, '');
-  if (!telefone) {
-    mostrarStatus('Telefone do cliente não encontrado', 'alerta');
-    return;
-  }
 
-  const servico = document.getElementById('servico').value || 'Não informado';
-  const total = parseFloat(document.getElementById('valor_total').value) || 0;
+  const servico = document.getElementById('servico').value;
+  const total = document.getElementById('valor_total').value;
 
-  let textoPecas =
-    listaPecas.length > 0
-      ? listaPecas
-          .map((p) => `• ${p.nome} — R$ ${p.valor.toFixed(2)}`)
-          .join('\n')
-      : 'Nenhuma peça adicionada';
-
-  const texto = `Olá ${veiculoAtual.nome_cliente || ''} 👋\n\nSeu veículo foi finalizado.\n\n🚗 ${veiculoAtual.placa} - ${veiculoAtual.modelo || ''}\n\n🔧 Serviço:\n${servico}\n\n🧩 Peças:\n${textoPecas}\n\n💰 Total: R$ ${total.toFixed(2)}\n\nObrigado pela preferência.`;
+  const texto = `Olá ${veiculoAtual.nome_cliente}! Seu veículo está pronto.\nPlaca: ${veiculoAtual.placa}\nTotal: R$ ${total}`;
 
   window.open(
-    `https://wa.me/55${telefone}?text=${encodeURIComponent(texto)}`,
+    `https://api.whatsapp.com/send?phone=${telefone}&text=${encodeURIComponent(texto)}`,
     '_blank'
   );
 }
@@ -908,18 +1023,104 @@ document.getElementById('peca_valor').addEventListener('keypress', (e) => {
   if (e.key === 'Enter') adicionarPeca();
 });
 
+/* =========================
+   ATALHOS DE SERVIÇO (REWORK)
+========================= */
+
+function renderizarBotoesAtalho() {
+  const container = document.getElementById('botoes-atalho-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    ${botoesServicoRapido
+      .map(
+        (servico, index) => `
+      <div class="atalho-wrapper">
+        <button type="button" class="btn-atalho" onclick="servicoRapido('${servico}')">
+          ${servico}
+        </button>
+        <span class="btn-remover-atalho" onclick="removerAtalho(${index})">×</span>
+      </div>
+    `
+      )
+      .join('')}
+    
+    <button type="button" class="btn-adicionar-atalho" onclick="promptNovoAtalho()">
+      + Novo
+    </button>
+  `;
+}
+
+function adicionarAtalho() {
+  const input = document.getElementById('novo-atalho-nome');
+  const novo = input.value.trim();
+  if (!novo) return;
+
+  botoesServicoRapido.push(novo);
+  localStorage.setItem('config_atalhos', JSON.stringify(botoesServicoRapido));
+  input.value = '';
+  renderizarBotoesAtalho();
+  mostrarStatus('Atalho adicionado!', 'sucesso');
+}
+
+// Abre o prompt simples direto na aba de serviço
+function promptNovoAtalho() {
+  const novo = prompt('Digite o nome do novo serviço (ex: Limpeza de Bico):');
+  if (novo && novo.trim() !== '') {
+    botoesServicoRapido.push(novo.trim());
+    salvarEAtualizarAtalhos();
+  }
+}
+
+// Remove e já atualiza a tela
+function removerAtalho(index) {
+  // Opcional: Adicione um confirm para evitar exclusão acidental
+  botoesServicoRapido.splice(index, 1);
+  salvarEAtualizarAtalhos();
+}
+
+// Centraliza o salvamento para evitar repetição de código
+function salvarEAtualizarAtalhos() {
+  localStorage.setItem('config_atalhos', JSON.stringify(botoesServicoRapido));
+  renderizarBotoesAtalho();
+  mostrarStatus('Atalhos atualizados!', 'sucesso');
+}
+
+// Lógica de acumulação (Sem apagar o que já existe)
 function servicoRapido(texto) {
-  document.getElementById('servico').value = texto;
-  salvarRascunho();
-  document.getElementById('servico').focus();
+  const campoServico = document.getElementById('servico');
+  if (!campoServico) return;
+
+  const valorAtual = campoServico.value.trim();
+
+  if (valorAtual === '') {
+    campoServico.value = texto;
+  } else {
+    // Adiciona vírgula apenas se o último caractere não for uma vírgula
+    const separador = valorAtual.endsWith(',') ? ' ' : ', ';
+    campoServico.value = valorAtual + separador + texto;
+  }
+
+  autoSalvarRascunho(); // Chama seu auto-save existente
+  campoServico.focus();
+}
+
+function pagarTudo() {
+  const total = document.getElementById('valor_total').value;
+  document.getElementById('valor_pago').value = total;
+  autoSalvarRascunho();
 }
 
 function toggleHistorico(index) {
   const body = document.getElementById(`historico-${index}`);
   const seta = document.getElementById(`seta-${index}`);
-  if (body) {
-    body.classList.toggle('active');
-    seta.innerText = body.classList.contains('active') ? '▲' : '▼';
+
+  if (body.style.display === 'block') {
+    body.style.display = 'none';
+    seta.innerHTML = 'ver detalhes ▼'; // Garante que o texto volte
+  } else {
+    body.style.display = 'block';
+    seta.innerHTML = 'fechar ▲';
   }
 }
 
@@ -935,8 +1136,127 @@ function trocarSecao(nome, event = null) {
   if (secao) secao.classList.add('active');
 
   if (event) {
-    event.target.classList.add('active');
+    event.currentTarget.classList.add('active');
   }
+
+  if (nome === 'pendentes') {
+    carregarPendentes();
+  }
+
+  if (nome === 'clientes') {
+    carregarClientes();
+  }
+  if (nome === 'financeiro') {
+    atualizarFinanceiro();
+  }
+}
+
+async function mudarPeriodo(periodo, botao) {
+  periodoAtual = periodo;
+
+  // Atualiza a classe ativa nos botões
+  document
+    .querySelectorAll('.btn-filtro')
+    .forEach((btn) => btn.classList.remove('active'));
+  botao.classList.add('active');
+
+  // Chama a atualização dos dados
+  await atualizarFinanceiro();
+}
+
+async function atualizarFinanceiro() {
+  try {
+    // Enviamos o período como parâmetro na URL
+    const response = await fetch(`${API}/estatisticas?periodo=${periodoAtual}`);
+
+    if (!response.ok) return;
+
+    const data = await response.json();
+
+    // 1. Atualiza os Cards
+    const faturado = data.resumo.faturamento || 0;
+    const recebido = data.resumo.recebido || 0;
+    const pendente = Math.max(0, faturado - recebido);
+
+    document.getElementById('dash-faturamento').innerText =
+      faturado.toLocaleString('pt-br', { style: 'currency', currency: 'BRL' });
+    document.getElementById('dash-recebido').innerText =
+      recebido.toLocaleString('pt-br', { style: 'currency', currency: 'BRL' });
+    document.getElementById('dash-pendente').innerText =
+      pendente.toLocaleString('pt-br', { style: 'currency', currency: 'BRL' });
+
+    // 2. Renderiza o Gráfico com os dados novos
+    if (data.grafico) {
+      renderizarGrafico(data.grafico);
+    }
+  } catch (err) {
+    console.error('Erro ao carregar dashboard:', err);
+  }
+}
+
+/* =========================
+   DASHBOARD
+========================= */
+
+async function atualizarDashboard() {
+  try {
+    const response = await fetch(`${API}/estatisticas`);
+    const data = await response.json();
+
+    // 1. Preenche os Cards
+    const faturado = data.resumo.faturamento || 0;
+    const recebido = data.resumo.recebido || 0;
+    const pendente = faturado - recebido;
+
+    document.getElementById('dash-faturamento').innerText =
+      faturado.toLocaleString('pt-br', { style: 'currency', currency: 'BRL' });
+    document.getElementById('dash-recebido').innerText =
+      recebido.toLocaleString('pt-br', { style: 'currency', currency: 'BRL' });
+    document.getElementById('dash-pendente').innerText =
+      pendente.toLocaleString('pt-br', { style: 'currency', currency: 'BRL' });
+
+    // 2. Renderiza o Gráfico
+    renderizarGrafico(data.grafico);
+  } catch (err) {
+    console.error('Erro dashboard:', err);
+  }
+}
+
+function renderizarGrafico(dados) {
+  const canvas = document.getElementById('graficoGanhos');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  // Verifica se a variável global existe e destrói o gráfico anterior
+  if (window.meuGrafico instanceof Chart) {
+    window.meuGrafico.destroy();
+  }
+
+  window.meuGrafico = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: dados.map((d) =>
+        d.dia ? d.dia.split('-').reverse().slice(0, 2).join('/') : ''
+      ),
+      datasets: [
+        {
+          label: 'Ganhos por Dia',
+          data: dados.map((d) => d.total_dia),
+          backgroundColor: '#00ff80',
+          borderRadius: 5,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: { beginAtZero: true, grid: { color: '#333' } },
+        x: { grid: { display: false } },
+      },
+      plugins: { legend: { display: false } },
+    },
+  });
 }
 
 /* =========================
@@ -945,27 +1265,98 @@ function trocarSecao(nome, event = null) {
 async function carregarClientes() {
   try {
     const response = await fetch(`${API}/veiculos`);
-    const clientes = await response.json();
-    const lista = document.getElementById('lista-clientes');
-    if (!lista) return;
 
-    lista.innerHTML = '';
-    clientes.forEach((cliente) => {
-      lista.innerHTML += `
-                <tr class="cliente-row" onclick="abrirCliente('${cliente.placa}')">
-                    <td>${cliente.nome_cliente || '-'}</td>
-                    <td>${cliente.placa || '-'}</td>
-                    <td>${cliente.modelo || '-'}</td>
-                    <td>${cliente.ano || '-'}</td>
-                    <td>${cliente.perfil_tecnico || '-'}</td>
-                    <td>${cliente.telefone_cliente || '-'}</td>
-                </tr>
-            `;
-    });
+    if (!response.ok) {
+      throw new Error(`Erro ao buscar veículos: ${response.statusText}`);
+    }
+
+    clientesCache = await response.json();
+
+    renderizarTabelaClientes(clientesCache);
+
+    console.log('Lista de clientes atualizada com sucesso.');
   } catch (err) {
-    console.error(err);
-    mostrarStatus('Erro ao carregar clientes', 'erro');
+    console.error('Falha na sincronização da lista de clientes:', err);
+    if (typeof mostrarStatus === 'function') {
+      mostrarStatus('Não foi possível carregar a lista de clientes', 'erro');
+    }
   }
+}
+
+function renderizarTabelaClientes(lista) {
+  const container = document.getElementById('lista-clientes');
+  if (!container) return;
+
+  container.innerHTML = '';
+  lista.forEach((cliente) => {
+    const dataUltimo = cliente.data_ultimo_servico || 'Sem registro';
+    container.innerHTML += `
+        <tr class="cliente-row" onclick="abrirCliente('${cliente.placa}')">
+            <td><strong>${cliente.nome_cliente || '-'}</strong></td>
+            <td>${cliente.placa || '-'}</td>
+            <td>${cliente.modelo || '-'}</td>
+            <td>${cliente.ano || '-'}</td>
+            <td>${dataUltimo}</td> 
+            <td>${cliente.perfil_tecnico || '-'}</td>
+            <td>${cliente.telefone_cliente || '-'}</td>
+        </tr>
+    `;
+  });
+}
+
+function ordenarClientes(coluna) {
+  if (!clientesCache.length) return;
+
+  // Inverte a ordem se clicar na mesma coluna, senão começa crescente
+  if (colunaAtual === coluna) {
+    ordemCrescente = !ordemCrescente;
+  } else {
+    colunaAtual = coluna;
+    ordemCrescente = true;
+  }
+
+  // 1. Limpa as setas de todos os cabeçalhos primeiro
+  document.querySelectorAll('th[onclick]').forEach((th) => {
+    // Remove qualquer seta existente no texto
+    th.innerText = th.innerText
+      .replace(' ↑', '')
+      .replace(' ↓', '')
+      .replace(' ↕', '');
+    // Adiciona o símbolo neutro de volta
+    th.innerText += ' ↕';
+  });
+
+  // 2. Adiciona a seta correta na coluna ativa
+  const thAtivo = document.querySelector(`th[onclick*="'${coluna}'"]`);
+  if (thAtivo) {
+    thAtivo.innerText = thAtivo.innerText.replace(' ↕', ''); // Tira o neutro
+    thAtivo.innerText += ordemCrescente ? ' ↑' : ' ↓'; // Põe a direção
+  }
+
+  // 3. Lógica de ordenação (mesma de antes)
+  const listaOrdenada = [...clientesCache].sort((a, b) => {
+    let valA = a[coluna] ? a[coluna].toString().toLowerCase() : '';
+    let valB = b[coluna] ? b[coluna].toString().toLowerCase() : '';
+    let retorno = 0;
+
+    if (coluna === 'ano') {
+      retorno = (parseInt(a.ano) || 0) - (parseInt(b.ano) || 0);
+    } else if (coluna === 'data_ultimo_servico') {
+      const dateA = a.data_ultimo_servico
+        ? new Date(a.data_ultimo_servico.split('/').reverse().join('-'))
+        : new Date(0);
+      const dateB = b.data_ultimo_servico
+        ? new Date(b.data_ultimo_servico.split('/').reverse().join('-'))
+        : new Date(0);
+      retorno = dateA - dateB;
+    } else {
+      retorno = valA.localeCompare(valB);
+    }
+
+    return ordemCrescente ? retorno : retorno * -1;
+  });
+
+  renderizarTabelaClientes(listaOrdenada);
 }
 
 async function abrirCliente(placa) {
@@ -993,43 +1384,44 @@ async function abrirCliente(placa) {
   }
 }
 
-async function abrirPendencia(idServico, placa) {
+async function abrirPendencia(id, placa) {
   try {
-    // abre cliente
-    await abrirCliente(placa);
+    // SALVA O ID E DADOS INICIAIS AQUI
+    recebimentoAtual = { id: id };
 
-    // vai pra aba histórico
+    const response = await fetch(`${API}/veiculo/${placa}`);
+    if (!response.ok) {
+      mostrarStatus('Erro ao carregar veículo', 'erro');
+      return;
+    }
+
+    const data = await response.json();
+    veiculoAtual = data;
+    abrirVeiculo(data);
+    trocarSecao('oficina');
+
+    // Ativa visualmente o botão da oficina na sidebar
+    document
+      .querySelectorAll('.sidebar-btn')
+      .forEach((b) => b.classList.remove('active'));
+    const btnOficina = document.querySelector('button[onclick*="oficina"]');
+    if (btnOficina) btnOficina.classList.add('active');
+
     trocarAbaDireta('historico');
 
-    // espera renderizar
+    // Scroll para a OS específica
     setTimeout(() => {
-      const cards = document.querySelectorAll('.servico-item');
-
-      cards.forEach((card) => {
-        if (card.dataset.id == idServico) {
-          const body = card.querySelector('.historico-body');
-
-          if (body) {
-            body.classList.add('active');
-          }
-
-          card.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center',
-          });
-
-          card.classList.add('highlight-pendente');
-
-          setTimeout(() => {
-            card.classList.remove('highlight-pendente');
-          }, 3000);
-        }
-      });
-    }, 300);
+      const elementoOS = document.querySelector(
+        `.servico-item[data-id="${id}"]`
+      );
+      if (elementoOS) {
+        elementoOS.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        elementoOS.style.border = '2px solid var(--accent-primary)';
+      }
+    }, 500);
   } catch (err) {
     console.error(err);
-
-    mostrarStatus('Erro ao abrir pendência', 'erro');
+    mostrarStatus('Erro ao processar pendência', 'erro');
   }
 }
 
@@ -1039,38 +1431,77 @@ if (buscaClienteInput) {
   buscaClienteInput.addEventListener('input', function () {
     const termo = this.value.toLowerCase();
     const linhas = document.querySelectorAll('#lista-clientes tr');
+
     linhas.forEach((linha) => {
-      linha.style.display = linha.innerText.toLowerCase().includes(termo)
-        ? 'table-row'
-        : 'none';
+      // O filtro agora lê tudo que está na linha (nome, placa, data...)
+      const textoDaLinha = linha.innerText.toLowerCase();
+      linha.style.display = textoDaLinha.includes(termo) ? 'table-row' : 'none';
     });
   });
 }
 
-// Seleciona o botão (quando você me passar o HTML, a gente ajusta o ID)
-const btnTheme = document.getElementById('theme-switch');
+/* =========================
+   INICIALIZAÇÃO E EVENTOS PROTEGIDOS
+========================= */
 
-// Função para alternar o tema
-function toggleTheme() {
-  const isLight = document.body.classList.toggle('light-mode');
-  localStorage.setItem('theme', isLight ? 'light' : 'dark');
-}
-
-// Rodar ao carregar a página
 window.addEventListener('DOMContentLoaded', () => {
+  // 1. Restaurar Tema (Dark/Light Mode)
   const savedTheme = localStorage.getItem('theme');
   const checkbox = document.querySelector('#checkbox');
-
   if (savedTheme === 'light') {
     document.body.classList.add('light-mode');
-    if (checkbox) checkbox.checked = true; // Mantém o switch ligado
+    if (checkbox) checkbox.checked = true;
+  }
+
+  // 2. Carregar Dados Iniciais
+  carregarClientes();
+  carregarPendentes();
+  renderizarBotoesAtalho();
+
+  // 3. Evento de ENTER na busca de placa (OFICINA)
+  const campoBuscaPlaca = document.getElementById('buscar_placa');
+  if (campoBuscaPlaca) {
+    campoBuscaPlaca.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        // Proteção: só executa se o campo tiver valor
+        if (campoBuscaPlaca.value.trim() !== '') {
+          buscarVeiculo();
+        }
+      }
+    });
+  }
+
+  // 4. Evento de Filtro de Busca (LISTA DE CLIENTES)
+  const buscaClienteInput = document.getElementById('busca_cliente');
+  if (buscaClienteInput) {
+    buscaClienteInput.addEventListener('input', function () {
+      const termo = this.value.toLowerCase();
+      const linhas = document.querySelectorAll('#lista-clientes tr');
+
+      linhas.forEach((linha) => {
+        const textoDaLinha = linha.innerText.toLowerCase();
+        // Usa display '' para evitar quebrar o layout da tabela (tr)
+        linha.style.display = textoDaLinha.includes(termo) ? '' : 'none';
+      });
+    });
+  }
+
+  // 5. Atalho de ENTER para adicionar peça rápida
+  const campoPecaValor = document.getElementById('peca_valor');
+  if (campoPecaValor) {
+    campoPecaValor.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        adicionarPeca();
+      }
+    });
   }
 });
 
 /* =========================
-   AUTOSAVE ORÇAMENTO
+   AUTOSAVE E BLOQUEIOS
 ========================= */
 
+// Aplica ouvintes apenas em elementos que existem no HTML atual
 [
   'servico',
   'km',
@@ -1080,12 +1511,22 @@ window.addEventListener('DOMContentLoaded', () => {
   'forma_pagamento',
 ].forEach((id) => {
   const el = document.getElementById(id);
-
   if (el) {
     el.addEventListener('input', autoSalvarRascunho);
   }
 });
 
-// Inicialização
-carregarClientes();
-carregarPendentes();
+// Impede que o scroll do rato altere valores numéricos (comum no campo KM)
+document.addEventListener('wheel', function (event) {
+  if (document.activeElement.type === 'number') {
+    document.activeElement.blur();
+  }
+});
+
+/* =========================
+   FUNÇÕES DE TEMA
+========================= */
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light-mode');
+  localStorage.setItem('theme', isLight ? 'light' : 'dark');
+}

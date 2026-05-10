@@ -2,7 +2,6 @@
    VARIÁVEIS DE TEMA
 ========================= */
 :root {
-  /* Cores Padrão (Dark Mode) */
   --bg-body: #111;
   --bg-sidebar: #181818;
   --bg-card: #1f1f1f;
@@ -13,31 +12,24 @@
   --text-secondary: #aaa;
   --border-color: #2a2a2a;
   --button-default: #333;
-  --accent-primary: #25d366; /* Verde WhatsApp */
-  --accent-header: #1f4d2f; /* Verde Escuro */
+  --accent-primary: #25d366;
+  --accent-header: #1f4d2f;
   --bg-badge-km: #2b2b2b;
   --text-badge-km: #fff;
 }
 
 body.light-mode {
-  /* Fundo geral (sem branco estourado) */
   --bg-body: #e7ecf3;
   --bg-sidebar: #f4f7fb;
   --bg-topbar: #f5f8fc;
-
   --bg-card: #f5f8fc;
   --bg-item: #e1e8f2;
   --bg-input: #e9eff7;
-
   --text-main: #0f172a;
   --text-secondary: #475569;
-
   --border-color: #cbd5e1;
-
   --button-default: #dbe4f0;
-
   --accent-primary: #2563eb;
-
   --accent-header: #dbeafe;
   --bg-badge-km: #d1d9e6;
   --text-badge-km: #334155;
@@ -56,7 +48,7 @@ body.light-mode {
 }
 
 /* =========================
-   BASE (Atualizado para usar variáveis)
+   BASE
 ========================= */
 * {
   box-sizing: border-box;
@@ -100,18 +92,16 @@ button {
   color: var(--text-main);
 }
 
-/* Mantenha o verde do WhatsApp fixo, ele costuma ser padrão nos dois temas */
 .sidebar-logo h1,
 .tab.active,
 .sidebar-btn.active,
 .salvar {
-  color: #000; /* Texto preto no fundo verde fica melhor */
+  color: #000;
 }
 
 /* =========================
    LAYOUT
 ========================= */
-
 .layout {
   display: grid;
   grid-template-columns: 240px 1fr;
@@ -121,10 +111,7 @@ button {
 /* =========================
    SIDEBAR
 ========================= */
-
 .sidebar {
-  background: var(--bg-sidebar);
-  border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   padding: 20px 14px;
@@ -133,6 +120,9 @@ button {
 
 .sidebar-footer {
   margin-top: auto;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
 }
 
 .sidebar-logo {
@@ -185,16 +175,9 @@ button {
   font-weight: bold;
 }
 
-.sidebar-footer {
-  font-size: 12px;
-  color: var(--text-secondary);
-  text-align: center;
-}
-
 /* =========================
    CONTENT AREA
 ========================= */
-
 .content-area {
   display: flex;
   flex-direction: column;
@@ -204,7 +187,6 @@ button {
 /* =========================
    SEÇÕES GLOBAIS
 ========================= */
-
 .secao {
   display: none;
   height: 100%;
@@ -215,17 +197,24 @@ button {
   flex-direction: column;
 }
 
+.secao-global {
+  display: none;
+  height: 100%;
+}
+
+.secao-global.active {
+  display: flex !important;
+  flex-direction: column;
+}
+
 /* =========================
    TOPBAR
 ========================= */
-
 .topbar {
-  background: var(--bg-topbar);
   padding: 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 2px solid var(--border-color);
   flex-shrink: 0;
 }
 
@@ -266,18 +255,14 @@ button {
 /* =========================
    TABS
 ========================= */
-
 .tabs {
   display: flex;
-  background: var(--bg-item);
   flex-shrink: 0;
 }
 
 .tab {
   flex: 1;
   border: none;
-  background: var(--bg-item);
-  color: var(--text-main);
   padding: 14px;
   font-size: 15px;
   cursor: pointer;
@@ -292,7 +277,6 @@ button {
 /* =========================
    CONTAINER
 ========================= */
-
 .container {
   padding: 14px;
   overflow-y: auto;
@@ -310,24 +294,21 @@ button {
 /* =========================
    CARD
 ========================= */
-
 .card {
-  background: var(--bg-card);
   padding: 18px;
   border-radius: 12px;
 }
 
 #aba-buscar .card {
   width: 100%;
-  max-width: 500px; /* Define uma largura máxima elegante */
-  margin: 0 auto; /* Margem automática para garantir o centro */
-  text-align: center; /* Centraliza os textos e botões dentro do card */
+  max-width: 500px;
+  margin: 0 auto;
+  text-align: center;
 }
 
 /* =========================
    INPUTS
 ========================= */
-
 input,
 textarea,
 button {
@@ -341,8 +322,6 @@ button {
 
 input,
 textarea {
-  background: var(--bg-input);
-  color: var(--text-main);
   border: 1px solid var(--border-color);
 }
 
@@ -351,8 +330,6 @@ textarea {
 }
 
 button {
-  background: var(--button-default);
-  color: var(--text-main);
   font-weight: bold;
   cursor: pointer;
   transition: 0.2s;
@@ -362,10 +339,6 @@ button:hover {
   filter: brightness(1.1);
 }
 
-/* =========================
-   BOTÃO SALVAR
-========================= */
-
 .salvar {
   background: var(--accent-primary) !important;
   color: black !important;
@@ -374,7 +347,6 @@ button:hover {
 /* =========================
    QUICK ACTIONS
 ========================= */
-
 .quick-actions {
   display: flex;
   gap: 8px;
@@ -395,7 +367,6 @@ button:hover {
 /* =========================
    PEÇAS
 ========================= */
-
 .peca-form {
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -413,10 +384,6 @@ button:hover {
   padding: 9px;
 }
 
-/* =========================
-   LISTA PEÇAS
-========================= */
-
 #lista_pecas {
   margin-top: 12px;
 }
@@ -425,7 +392,6 @@ button:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var(--bg-item);
   padding: 10px;
   border-radius: 8px;
   margin-top: 6px;
@@ -439,8 +405,6 @@ button:hover {
   font-size: 12px;
   color: var(--text-secondary);
 }
-
-/* BOTÃO REMOVER */
 
 .peca-item button {
   width: 28px !important;
@@ -464,10 +428,6 @@ button:hover {
   color: white !important;
 }
 
-/* =========================
-   TOTAL
-========================= */
-
 .pecas-total {
   margin-top: 12px;
   padding: 12px;
@@ -481,7 +441,6 @@ button:hover {
 /* =========================
    FINANCEIRO
 ========================= */
-
 .financeiro-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -500,18 +459,13 @@ button:hover {
 /* =========================
    HISTÓRICO
 ========================= */
-
 .servico-item {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 12px;
   margin-bottom: 15px;
-  overflow: hidden; /* Garante que o botão não saia da borda */
+  overflow: hidden;
 }
-
-/* =========================
-   HISTÓRICO EXPANSÍVEL
-========================= */
 
 .historico-header {
   padding: 15px;
@@ -548,12 +502,12 @@ button:hover {
 }
 
 .historico-servico-box {
-  background: var(--bg-item);
   padding: 12px;
   border-radius: 8px;
   margin-bottom: 10px;
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
+
 .status-pago,
 .status-pendente,
 .status-parcial {
@@ -615,7 +569,6 @@ button:hover {
 /* =========================
    STATUS
 ========================= */
-
 #status {
   position: fixed;
   left: 10px;
@@ -639,45 +592,8 @@ button:hover {
 }
 
 /* =========================
-   RESPONSIVO
-========================= */
-
-@media (max-width: 900px) {
-  body {
-    overflow: auto;
-  }
-
-  .layout {
-    grid-template-columns: 1fr;
-  }
-
-  .sidebar {
-    display: none;
-  }
-
-  .content-area {
-    width: 100%;
-  }
-}
-
-/* =========================
-   SEÇÕES GLOBAIS
-========================= */
-
-.secao-global {
-  display: none;
-  height: 100%;
-}
-
-.secao-global.active {
-  display: flex;
-  flex-direction: column;
-}
-
-/* =========================
    TABELA CLIENTES
 ========================= */
-
 .tabela-wrapper {
   margin-top: 14px;
   overflow-x: auto;
@@ -720,14 +636,68 @@ button:hover {
   background: var(--bg-card);
 }
 
-/* =========================
-   BUSCA CLIENTES
-========================= */
-
 #busca_cliente {
   margin-bottom: 14px;
 }
 
+/* =========================
+   DASHBOARD
+========================= */
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.card-stats {
+    background: #252525;
+    padding: 20px;
+    border-radius: 12px;
+    border-left: 5px solid #444;
+}
+
+.card-stats h3 { font-size: 1.8rem; margin-top: 5px; }
+
+/* Cores dos Cards */
+.card-stats.faturamento { border-color: #00ff80; color: #00ff80; }
+.card-stats.recebido { border-color: #3b82f6; color: #3b82f6; }
+.card-stats.pendente { border-color: #f59e0b; color: #f59e0b; }
+
+.grafico-container {
+    background: #252525;
+    padding: 20px;
+    border-radius: 12px;
+    height: 300px;
+}
+
+.filtros-periodo {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.btn-filtro {
+    background: #333;
+    border: none;
+    color: #fff;
+    padding: 8px 20px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.btn-filtro:hover {
+    background: #444;
+}
+
+.btn-filtro.active { 
+    background: #00ff80; /* Cor vibrante da 99 */
+    color: #000; 
+    font-weight: bold;
+}
 /* =========================
    SWITCH DE TEMA
 ========================= */
@@ -780,18 +750,24 @@ button:hover {
   border-radius: 50%;
 }
 
+input:checked + .slider {
+  background-color: var(--accent-primary);
+}
+
+input:checked + .slider:before {
+  transform: translateX(18px);
+}
+
+/* =========================
+   FINANCEIRO HISTÓRICO
+========================= */
 .historico-financeiro {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   margin-top: 15px;
   padding: 12px;
-  background: rgba(
-    0,
-    0,
-    0,
-    0.05
-  ); /* No Dark fica escuro, no Light fica cinza leve */
+  background: rgba(0, 0, 0, 0.05);
   border-radius: 10px;
   border: 1px solid var(--border-color);
 }
@@ -805,33 +781,8 @@ button:hover {
 }
 
 .historico-financeiro div {
-  background: var(--card-secundario);
-
   border-radius: 10px;
-
   padding: 10px;
-}
-
-/* Cores para os status no histórico */
-.status-pago {
-  color: #2ecc71; /* Verde */
-  background: rgba(46, 204, 113, 0.1);
-  padding: 4px 8px;
-  border-radius: 6px;
-}
-
-.status-pendente {
-  color: #e74c3c; /* Vermelho */
-  background: rgba(231, 76, 60, 0.1);
-  padding: 4px 8px;
-  border-radius: 6px;
-}
-
-.status-parcial {
-  color: #f1c40f; /* Amarelo/Laranja */
-  background: rgba(241, 196, 15, 0.1);
-  padding: 4px 8px;
-  border-radius: 6px;
 }
 
 .highlight-pendente {
@@ -843,7 +794,6 @@ button:hover {
     transform: scale(1);
     border-color: #666;
   }
-
   to {
     transform: scale(1.01);
     border-color: #f1c40f;
@@ -862,117 +812,71 @@ button:hover {
 
 .btn-receber {
   border: none;
-  outline: none;
-
   background: #27ae60;
-
   color: white;
-
   padding: 12px 18px;
-
   border-radius: 12px;
-
   font-size: 14px;
   font-weight: 700;
-
   cursor: pointer;
-
   transition:
-    transform 0.15s ease,
-    opacity 0.15s ease,
-    background 0.15s ease;
-
+    transform 0.15s,
+    opacity 0.15s,
+    background 0.15s;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .btn-receber:hover {
   transform: translateY(-2px);
-
   opacity: 0.95;
 }
 
-.btn-receber:active {
-  transform: scale(0.98);
-}
-
-.modal-overlay {
+/* =========================
+   SISTEMA DE MODAIS
+========================= */
+.modal-overlay,
+#modal-alerta-peca {
+  display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.75); /* Fundo escuro levemente mais forte */
-  display: none;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 999999;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
-  backdrop-filter: blur(6px); /* O seu efeito de desfoque */
-  -webkit-backdrop-filter: blur(6px); /* Suporte para Safari */
 }
 
-.modal-overlay.active {
-  display: flex;
+.modal-overlay.active,
+#modal-alerta-peca.active {
+  display: flex !important;
 }
 
-.modal-box {
-  width: 90%; /* Melhor para mobile */
-  max-width: 420px;
-
-  /* AJUSTE AQUI: Usei --bg-card que é a variável que existe no seu :root */
+.modal-box,
+.modal-content {
   background: var(--bg-card);
-
-  border: 1px solid var(--border-color);
+  padding: 30px;
   border-radius: 20px;
-  padding: 24px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-
-  /* Garante que o conteúdo dentro da caixa tenha opacidade total */
-  opacity: 1 !important;
-}
-
-.modal-box h2 {
-  margin-bottom: 10px;
-}
-
-.modal-box p {
-  opacity: 0.7;
-
-  margin-bottom: 18px;
-}
-
-.modal-box input {
-  width: 100%;
-
-  padding: 14px;
-
-  border-radius: 12px;
-
   border: 1px solid var(--border-color);
-
-  background: var(--input-bg);
-
-  color: var(--text-color);
-
-  font-size: 16px;
-
-  margin-bottom: 20px;
+  max-width: 420px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  color: var(--text-main);
 }
 
 .modal-actions {
   display: flex;
-
-  justify-content: flex-end;
-
-  gap: 10px;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
 }
 
 .btn-cancelar,
 .btn-confirmar {
   border: none;
-
   padding: 12px 18px;
-
   border-radius: 12px;
-
   font-weight: 700;
-
   cursor: pointer;
 }
 
@@ -986,29 +890,149 @@ button:hover {
   color: white;
 }
 
-/* Quando o input está marcado (Ligado) */
-input:checked + .slider {
-  background-color: var(--accent-primary); /* Verde do seu projeto */
+/* =========================
+   AJUSTES NAS PENDÊNCIAS
+========================= */
+
+body.light-mode .servico-item.pendencia-click .badge-km {
+  color: #ffffff !important; 
 }
 
-input:checked + .slider:before {
-  transform: translateX(18px);
+
+.highlight-pendente {
+  animation: none !important; 
+  border-color: var(--border-color); 
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+
+.servico-item.pendencia-click:hover {
+  transform: translateY(-3px);
+  border-color: var(
+    --accent-primary
+  ); 
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+body.light-mode .servico-item.pendencia-click:hover {
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05); 
+}
+
+
+#botoes-atalho-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px; 
+  margin-top: 10px;
+  overflow: visible; /
+}
+
+.atalho-wrapper {
+  position: relative;
+  display: inline-block;
+  overflow: visible !important;
+  z-index: 1;
+}
+
+.btn-remover-atalho {
+  position: absolute;
+  top: -7px; 
+  right: -7px; 
+  background: #ef4444;
+  color: white;
+  width: 18px; 
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  cursor: pointer;
+
+  border: 2px solid #1a1a1a;
+
+  z-index: 10; 
+  opacity: 0;
+  transition: all 0.2s ease;
+}
+
+
+.atalho-wrapper:hover .btn-remover-atalho {
+  opacity: 1;
+  transform: scale(1.1); 
+}
+
+.btn-adicionar-atalho {
+  background: transparent;
+  border: 2px dashed #444;
+  color: #aaa;
+  padding: 5px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.3s;
+}
+
+.btn-adicionar-atalho:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background: rgba(0, 255, 128, 0.05); 
+}
+
+/* Botão de Adicionar (+) */
+.btn-adicionar-atalho {
+  background: transparent;
+  border: 2px dashed #666;
+  color: #888;
+  padding: 5px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.btn-adicionar-atalho:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
 }
 
 /* =========================
-   ROW HOVER
+   UTILITÁRIOS
 ========================= */
-
-.cliente-row {
-  cursor: pointer;
-  transition: 0.2s;
+#lista-pendentes {
+  width: 100%;
 }
 
 .cliente-row:hover {
   background: var(--bg-input);
 }
 
-/* REMOVE SCROLL INPUT NUMBER */
+@media (max-width: 900px) {
+  body {
+    overflow: auto;
+  }
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    display: none;
+  }
+  .content-area {
+    width: 100%;
+  }
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type='number'] {
+  -moz-appearance: textfield;
+}
 
 input[type='number']::-webkit-outer-spin-button,
 input[type='number']::-webkit-inner-spin-button {
