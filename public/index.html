@@ -6,438 +6,279 @@
     <title>Oficina</title>
     <link rel="stylesheet" href="style.css" />
   </head>
-
   <body>
     <div class="layout">
       <aside class="sidebar">
         <div>
-          <div class="sidebar-logo">
-            <h1>Oficina</h1>
-            <span>Sistema interno</span>
-          </div>
-
+          <div class="sidebar-logo"><h1>Oficina</h1><span>Sistema interno</span></div>
           <nav class="sidebar-nav">
-            <button
-              class="sidebar-btn active"
-              onclick="trocarSecao('oficina', event)"
-            >
-              🔧 Oficina
-            </button>
-            <button
-              class="sidebar-btn"
-              onclick="trocarSecao('clientes', event)"
-            >
-              👥 Lista de Clientes
-            </button>
-            <button
-              class="sidebar-btn"
-              onclick="trocarSecao('pendentes', event)"
-            >
-              💰 Pendentes
-            </button>
-            <button
-              class="sidebar-btn"
-              onclick="trocarSecao('financeiro', event)"
-            >
-              📊 Financeiro
-            </button>
-            <button class="sidebar-btn" onclick="trocarSecao('config', event)">
-              ⚙ Configurações
-            </button>
+            <button class="sidebar-btn active" data-secao="oficina">🔧 Oficina</button>
+            <button class="sidebar-btn" data-secao="clientes">👥 Lista de Clientes</button>
+            <button class="sidebar-btn" data-secao="pendentes">💰 Pendentes</button>
+            <button class="sidebar-btn" data-secao="financeiro">📊 Financeiro</button>
+            <button class="sidebar-btn" data-secao="config">⚙ Configurações</button>
           </nav>
         </div>
-
         <div class="theme-switch-wrapper">
           <span>Modo Claro</span>
-          <label class="theme-switch" for="checkbox">
-            <input type="checkbox" id="checkbox" onclick="toggleTheme()" />
-            <div class="slider round"></div>
-          </label>
+          <label class="theme-switch" for="checkbox"><input type="checkbox" id="checkbox" /><div class="slider round"></div></label>
         </div>
         <div class="sidebar-footer">Oficina System v1</div>
       </aside>
 
       <div class="content-area">
         <section id="secao-oficina" class="secao-global active">
-          <header class="topbar" id="topbar">
-            <div class="header-left">
-              <strong id="headerPlaca">Nenhum veículo</strong>
-              <span id="headerModelo">---</span>
+          <header class="topbar vehicle-header" id="topbar">
+            <div class="vehicle-header-main">
+              <div class="plate-badge" id="headerPlaca">Nenhum veículo</div>
+              <div class="vehicle-title-block">
+                <strong id="headerModelo">---</strong>
+                <div class="vehicle-meta-row">
+                  <span id="headerAno">Ano: ---</span>
+                  <span id="headerCor">Cor: ---</span>
+                  <span id="headerKm">KM: ---</span>
+                </div>
+              </div>
             </div>
-            <div class="header-right">
+            <div class="vehicle-header-owner">
               <span id="headerCliente">---</span>
               <div class="header-phone">
                 <span id="headerTelefone">---</span>
-                <button class="mini-whatsapp" onclick="abrirWhatsRapido()">
-                  WhatsApp
-                </button>
+                <button class="mini-whatsapp" id="btn-whats-rapido">WhatsApp</button>
               </div>
             </div>
           </header>
-
           <nav class="tabs">
-            <button
-              class="tab active"
-              data-aba="buscar"
-              onclick="trocarAba('buscar', event)"
-            >
-              Buscar
-            </button>
-            <button
-              class="tab"
-              data-aba="servico"
-              onclick="trocarAba('servico', event)"
-            >
-              Serviço
-            </button>
-            <button
-              class="tab"
-              data-aba="historico"
-              onclick="trocarAba('historico', event)"
-            >
-              Histórico
-            </button>
-            <button
-              class="tab"
-              data-aba="cadastro"
-              onclick="trocarAba('cadastro', event)"
-            >
-              Cadastro
-            </button>
+            <button class="tab active" data-aba="buscar">Buscar</button>
+            <button class="tab" data-aba="servico">Serviço</button>
+            <button class="tab" data-aba="historico">Histórico</button>
+            <button class="tab" data-aba="cadastro">Cadastro</button>
           </nav>
-
           <main class="container">
             <section id="aba-buscar" class="aba active">
-              <div class="card">
-                <h2>Buscar Veículo</h2>
-                <input
-                  type="text"
-                  id="buscar_placa"
-                  placeholder="Digite a placa"
-                />
-                <button onclick="buscarVeiculo()">Buscar Veículo</button>
+              <div class="card"><h2>Buscar Veículo</h2><input type="text" id="buscar_placa" placeholder="Digite a placa" /><button id="btn-buscar-veiculo">Buscar Veículo</button></div>
+              <div class="card oficina-hoje-card">
+                <div class="section-title-row">
+                  <div>
+                    <h2>🚗 Oficina Hoje</h2>
+                    <p>Carros que estão com OS aberta. O serviço rápido continua funcionando normalmente.</p>
+                  </div>
+                  <button id="btn-recarregar-os" class="btn-secondary btn-inline">Atualizar</button>
+                </div>
+                <div id="oficina-hoje-resumo" class="oficina-resumo"></div>
+                <div id="lista-os-abertas" class="os-board"></div>
               </div>
             </section>
-
             <section id="aba-servico" class="aba">
-              <div class="card">
-                <h2>Fechar Serviço</h2>
-                <textarea
-                  id="servico"
-                  rows="4"
-                  placeholder="Serviço executado"
-                ></textarea>
-                <div class="quick-actions" id="botoes-atalho-container"></div>
-                <div class="pecas-total">
+              <div class="card service-card">
+                <div class="section-title-row">
                   <div>
-                    <label>Kilometragem Atual</label>
-                    <input type="number" id="km" placeholder="KM Atual" />
+                    <h2>Fechar Serviço</h2>
+                    <p>Monte o orçamento, registre peças e finalize o pagamento.</p>
                   </div>
                 </div>
+                <div id="os-atual-banner" class="os-atual-banner hidden"></div>
+
+                <label class="field-label" for="servico">Serviço executado</label>
+                <textarea id="servico" rows="4" placeholder="Ex: Troca de óleo, revisão de freios..."></textarea>
+                <div class="quick-actions" id="botoes-atalho-container"></div>
+
+                <div class="service-km-card">
+                  <label for="km">Kilometragem Atual</label>
+                  <input type="number" id="km" placeholder="KM Atual" />
+                </div>
+
                 <h3>Peças Utilizadas</h3>
                 <div class="peca-form">
-                  <input
-                    type="text"
-                    id="peca_nome"
-                    placeholder="Nome da peça"
-                  />
-                  <input type="number" id="peca_valor" placeholder="Valor" />
+                  <input type="text" id="peca_nome" placeholder="Nome da peça" />
+                  <input type="number" id="peca_valor" placeholder="Valor" step="0.01" />
                 </div>
-                <button onclick="adicionarPeca()">Adicionar Peça</button>
+                <button id="btn-adicionar-peca" class="btn-secondary">Adicionar Peça</button>
                 <div id="lista_pecas"></div>
-                <div class="pecas-total">
-                  <strong>Total Peças:</strong>
-                  <span id="valor_pecas_display"> R$ 0,00 </span>
+
+                <div class="payment-panel">
+                  <div class="payment-panel-header">
+                    <div>
+                      <h3>Resumo financeiro</h3>
+                      <p>Informe mão de obra, pagamento recebido e forma de pagamento.</p>
+                    </div>
+                    <div class="payment-total-box">
+                      <small>Total Geral</small>
+                      <strong id="valor_total_display">R$ 0,00</strong>
+                    </div>
+                  </div>
+
+                  <div class="payment-grid">
+                    <div class="payment-field readonly-field">
+                      <label for="valor_pecas">Valor Peças</label>
+                      <input type="number" id="valor_pecas" readonly />
+                      <small id="valor_pecas_display">R$ 0,00</small>
+                    </div>
+                    <div class="payment-field">
+                      <label for="valor_maodeobra">Mão de obra</label>
+                      <input type="number" id="valor_maodeobra" placeholder="0,00" step="0.01" />
+                    </div>
+                    <div class="payment-field">
+                      <label for="valor_pago">Valor recebido agora</label>
+                      <input type="number" id="valor_pago" placeholder="0,00" step="0.01" />
+                    </div>
+                    <div class="payment-field payment-method-field">
+                      <label>Forma de pagamento</label>
+                      <input type="hidden" id="forma_pagamento" value="pendente" />
+                      <div class="payment-choice-grid" role="group" aria-label="Forma de pagamento">
+                        <button type="button" class="payment-choice active" data-pagamento="pendente">Pendente</button>
+                        <button type="button" class="payment-choice" data-pagamento="pix">Pix</button>
+                        <button type="button" class="payment-choice" data-pagamento="dinheiro">Dinheiro</button>
+                        <button type="button" class="payment-choice" data-pagamento="cartao">Cartão</button>
+                        <button type="button" class="payment-choice" data-pagamento="misto">Misto</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="payment-balance-row">
+                    <div><span>Recebido agora</span><strong id="payment-recebido-display">R$ 0,00</strong></div>
+                    <div><span>Falta receber</span><strong id="payment-falta-display">R$ 0,00</strong></div>
+                  </div>
+                  <input type="number" id="valor_total" readonly hidden />
                 </div>
-                <div class="financeiro-grid">
-                  <div>
-                    <label>Valor Peças</label>
-                    <input type="number" id="valor_pecas" />
-                  </div>
-                  <div>
-                    <label>Mão de obra</label>
-                    <input type="number" id="valor_maodeobra" />
-                  </div>
-                  <div class="financeiro-box">
-                    <label>Valor Pago</label>
-                    <input
-                      type="number"
-                      id="valor_pago"
-                      placeholder="0.00"
-                      step="0.01"
-                    />
-                  </div>
-                  <div class="financeiro-box">
-                    <label>Forma de Pagamento</label>
-                    <select id="forma_pagamento">
-                      <option value="pendente">Pendente</option>
-                      <option value="dinheiro">Dinheiro</option>
-                      <option value="pix">Pix</option>
-                      <option value="cartao">Cartão</option>
-                      <option value="misto">Misto</option>
-                    </select>
-                  </div>
+
+                <div class="service-actions">
+                  <button id="btn-encaminhar-orcamento" class="btn-orcamento">Encaminhar Orçamento</button>
+                  <button id="btn-gerar-pdf" class="btn-secondary">Gerar PDF/Imprimir</button>
+                  <button id="btn-limpar-rascunho" class="btn-limpar">Limpar Orçamento</button>
+                  <button id="btn-salvar-os" class="btn-secondary">Manter na Oficina</button>
+                  <button id="btn-marcar-pronto" class="btn-secondary hidden">Marcar Pronto</button>
+                  <button id="btn-cancelar-os" class="btn-limpar hidden">Cancelar OS</button>
+                  <button id="btn-fechar-servico" class="salvar">Fechar Serviço</button>
+                  <button id="btn-gerar-whatsapp">WhatsApp Fechamento</button>
                 </div>
-                <div class="pecas-total">
-                  <strong>Total Geral</strong>
-                  <span id="valor_total_display"> R$ 0,00 </span>
-                </div>
-                <input type="number" id="valor_total" readonly hidden />
-                <button onclick="encaminharOrcamento()" class="btn-orcamento">
-                  Encaminhar Orçamento
-                </button>
-                <button class="btn-limpar" onclick="limparRascunho()">
-                  Limpar Orçamento
-                </button>
-                <button class="salvar" onclick="fecharServico()">
-                  Fechar Serviço
-                </button>
-                <button onclick="gerarWhatsApp()">WhatsApp Fechamento</button>
               </div>
             </section>
-
-            <section id="aba-historico" class="aba">
-              <div class="card">
-                <h2>Histórico</h2>
-                <div id="historico"></div>
-              </div>
-            </section>
-
-            <section id="aba-cadastro" class="aba">
-              <div class="card">
-                <h2>Cadastro Veículo</h2>
-                <input type="text" id="placa" placeholder="Placa" />
-                <input type="text" id="nome_cliente" placeholder="Cliente" />
-
-                <div style="display: flex; gap: 8px; margin-bottom: 12px">
-                  <input
-                    type="text"
-                    id="ddd_cliente"
-                    value="54"
-                    style="width: 70px; text-align: center"
-                    placeholder="DDD"
-                  />
-                  <input
-                    type="text"
-                    id="tel_cliente"
-                    placeholder="Telefone (ex: 999172308)"
-                    style="flex: 1"
-                  />
-                </div>
-
-                <input type="text" id="modelo" placeholder="Modelo" />
-                <input type="number" id="ano" placeholder="Ano" />
-                <textarea
-                  id="perfil"
-                  rows="4"
-                  placeholder="Perfil técnico"
-                ></textarea>
-                <div id="perfilAlerta"></div>
-                <button class="salvar" onclick="salvarCadastro()">
-                  Salvar Cadastro
-                </button>
-              </div>
-            </section>
+            <section id="aba-historico" class="aba"><div class="card"><h2>Histórico</h2><div id="historico"></div></div></section>
+            <section id="aba-cadastro" class="aba"><div class="card"><h2>Cadastro Veículo</h2><input type="text" id="placa" placeholder="Placa" /><input type="text" id="nome_cliente" placeholder="Cliente" /><div style="display:flex;gap:8px;margin-bottom:12px"><input type="text" id="ddd_cliente" value="54" style="width:70px;text-align:center" placeholder="DDD" /><input type="text" id="tel_cliente" placeholder="Telefone (ex: 999172308)" style="flex:1" /></div><input type="text" id="modelo" placeholder="Modelo" /><input type="text" id="cor" placeholder="Cor" /><input type="number" id="ano" placeholder="Ano" /><textarea id="perfil" rows="4" placeholder="Perfil técnico"></textarea><div id="perfilAlerta"></div><button class="salvar" id="btn-salvar-cadastro">Salvar Cadastro</button></div></section>
           </main>
         </section>
 
-        <section id="secao-clientes" class="secao-global">
-          <div class="container">
-            <div class="card">
-              <h2>Lista de Clientes</h2>
-              <input
-                type="text"
-                id="busca_cliente"
-                placeholder="Buscar cliente..."
-              />
-              <div class="tabela-wrapper">
-                <table class="clientes-table">
-                  <thead>
-                    <tr>
-                      <th
-                        onclick="ordenarClientes('nome_cliente')"
-                        style="cursor: pointer"
-                      >
-                        Cliente ↕
-                      </th>
-                      <th>Placa</th>
-                      <th>Modelo</th>
-                      <th
-                        onclick="ordenarClientes('ano')"
-                        style="cursor: pointer"
-                      >
-                        Ano ↕
-                      </th>
-                      <th
-                        onclick="ordenarClientes('data_ultimo_servico')"
-                        style="cursor: pointer"
-                      >
-                        Última Visita ↕
-                      </th>
-                      <th>Perfil</th>
-                      <th>Telefone</th>
-                    </tr>
-                  </thead>
-                  <tbody id="lista-clientes"></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="secao-pendentes" class="secao-global">
-          <div class="container">
-            <div class="card">
-              <h2>Pagamentos Pendentes</h2>
-              <div id="lista-pendentes"></div>
-            </div>
-          </div>
-        </section>
-
+        <section id="secao-clientes" class="secao-global"><div class="container"><div class="card"><h2>Lista de Clientes</h2><input type="text" id="busca_cliente" placeholder="Buscar cliente..." /><div class="tabela-wrapper"><table class="clientes-table"><thead><tr><th data-sort="nome_cliente" style="cursor:pointer">Cliente ↕</th><th>Placa</th><th>Modelo</th><th data-sort="cor" style="cursor:pointer">Cor ↕</th><th data-sort="ano" style="cursor:pointer">Ano ↕</th><th data-sort="km_atual" style="cursor:pointer">KM ↕</th><th data-sort="data_ultimo_servico" style="cursor:pointer">Última Visita ↕</th><th>Perfil</th><th>Telefone</th></tr></thead><tbody id="lista-clientes"></tbody></table></div></div></div></section>
+        <section id="secao-pendentes" class="secao-global"><div class="container"><div class="card"><h2>Pagamentos Pendentes</h2><div id="lista-pendentes"></div></div></div></section>
         <section id="secao-config" class="secao-global">
           <div class="container">
-            <div class="card">
-              <h2>Configurações do Sistema</h2>
-              <div
-                style="
-                  margin-top: 20px;
-                  padding-top: 20px;
-                  border-top: 1px solid var(--border-color);
-                "
-              >
-                <h3>Gerenciar Atalhos de Serviço</h3>
-                <p
-                  style="font-size: 0.85rem; opacity: 0.7; margin-bottom: 15px"
-                >
-                  Adicione ou remova os botões que aparecem na tela de serviço
-                  rápido.
-                </p>
-                <div style="display: flex; gap: 8px; margin-bottom: 20px">
-                  <input
-                    type="text"
-                    id="novo-atalho-nome"
-                    placeholder="Ex: Limpeza de Bico"
-                    style="flex: 1"
-                  />
-                  <button
-                    onclick="adicionarAtalho()"
-                    style="width: auto; padding: 0 20px"
-                  >
-                    Adicionar
-                  </button>
+            <div class="card config-card">
+              <div class="section-title-row">
+                <div>
+                  <h2>Configurações da Oficina</h2>
+                  <p>Essas informações aparecem na Ordem de Serviço em PDF.</p>
                 </div>
-                <div
-                  id="lista-atalhos-config"
-                  style="display: flex; flex-wrap: wrap; gap: 10px"
-                ></div>
+              </div>
+              <div class="config-grid">
+                <div class="config-field"><label for="config-oficina-nome">Nome da oficina</label><input type="text" id="config-oficina-nome" placeholder="Ex: MC RACING" /></div>
+                <div class="config-field"><label for="config-oficina-subtitulo">Descrição</label><input type="text" id="config-oficina-subtitulo" placeholder="Ex: Mecânica Multimarcas" /></div>
+                <div class="config-field"><label for="config-oficina-telefone">Telefone</label><input type="text" id="config-oficina-telefone" placeholder="(54) 99999-9999" /></div>
+                <div class="config-field"><label for="config-oficina-cnpj">CNPJ</label><input type="text" id="config-oficina-cnpj" placeholder="00.000.000/0000-00" /></div>
+                <div class="config-field"><label for="config-oficina-rua">Rua / Endereço</label><input type="text" id="config-oficina-rua" placeholder="Rua e número" /></div>
+                <div class="config-field"><label for="config-oficina-bairro">Bairro</label><input type="text" id="config-oficina-bairro" placeholder="Bairro" /></div>
+                <div class="config-field"><label for="config-oficina-cidade">Cidade / UF</label><input type="text" id="config-oficina-cidade" placeholder="Caxias do Sul - RS" /></div>
+                <div class="config-field"><label for="config-oficina-cep">CEP</label><input type="text" id="config-oficina-cep" placeholder="00000-000" /></div>
+              </div>
+              <div class="config-actions">
+                <button id="btn-salvar-config-oficina" class="salvar">Salvar informações</button>
+                <small id="config-oficina-status">As configurações ficam salvas neste computador.</small>
               </div>
             </div>
           </div>
         </section>
-
         <section id="secao-financeiro" class="secao-global">
-          <div class="container">
-            <div class="dashboard-header">
-              <h2>💰 Desempenho Financeiro</h2>
-              <div class="filtros-periodo">
-                <button
-                  onclick="mudarPeriodo('diario', this)"
-                  class="btn-filtro"
-                >
-                  Hoje
-                </button>
-                <button
-                  onclick="mudarPeriodo('semanal', this)"
-                  class="btn-filtro active"
-                >
-                  Últimos 7 dias
-                </button>
-                <button
-                  onclick="mudarPeriodo('mensal', this)"
-                  class="btn-filtro"
-                >
-                  Últimos 30 dias
-                </button>
+          <div class="container finance-dashboard desktop-finance">
+            <div class="finance-page-header">
+              <div>
+                <small>Financeiro da oficina</small>
+                <h2>Dashboard de ganhos</h2>
+                <p>Visão clara de faturamento, recebimentos, OS e métodos de pagamento.</p>
+              </div>
+              <div class="finance-period-switch filtros-periodo">
+                <button data-periodo="diario" class="btn-filtro">Hoje</button>
+                <button data-periodo="semanal" class="btn-filtro active">Semana</button>
+                <button data-periodo="mensal" class="btn-filtro">Mês</button>
               </div>
             </div>
 
-            <div class="dashboard-grid">
-              <div class="card-stats faturamento">
-                <small>Faturamento Total</small>
-                <h3 id="dash-faturamento">R$ 0,00</h3>
-              </div>
-              <div class="card-stats recebido">
-                <small>Total Recebido</small>
-                <h3 id="dash-recebido">R$ 0,00</h3>
-              </div>
-              <div class="card-stats pendente">
-                <small>Total Pendente</small>
-                <h3 id="dash-pendente">R$ 0,00</h3>
-              </div>
-            </div>
+            <section class="finance-kpi-grid">
+              <article class="kpi-card primary">
+                <span id="finance-periodo-label">Semana atual</span>
+                <strong id="dash-recebido">R$ 0,00</strong>
+                <small>Total recebido</small>
+              </article>
+              <article class="kpi-card">
+                <span>Faturamento</span>
+                <strong id="dash-faturamento">R$ 0,00</strong>
+                <small>Valor total das OS</small>
+              </article>
+              <article class="kpi-card">
+                <span>Pendente</span>
+                <strong id="dash-pendente">R$ 0,00</strong>
+                <small id="dash-pendente-percent">0% em aberto</small>
+              </article>
+              <article class="kpi-card">
+                <span>OS fechadas</span>
+                <strong id="dash-servicos">0</strong>
+                <small id="dash-ticket-medio">Ticket médio R$ 0,00</small>
+              </article>
+            </section>
 
-            <div class="card">
-              <div
-                class="grafico-container"
-                style="position: relative; height: 300px; width: 100%"
-              >
-                <canvas id="graficoGanhos"></canvas>
-              </div>
-            </div>
+            <section class="finance-main-grid">
+              <article class="finance-card finance-performance-card">
+                <div class="card-title-row">
+                  <div>
+                    <h3 id="finance-performance-title">Desempenho semanal</h3>
+                    <p id="finance-performance-subtitle">Quanto entrou em cada dia da semana.</p>
+                  </div>
+                  <strong id="finance-best-label">Melhor período: —</strong>
+                </div>
+                <div id="finance-performance-content" class="desktop-bars"></div>
+              </article>
+
+              <article class="finance-card payment-summary-card">
+                <div class="card-title-row compact">
+                  <div>
+                    <h3>Recebido por método</h3>
+                    <p>Dinheiro, Pix e maquininha/cartão.</p>
+                  </div>
+                </div>
+                <div class="payment-method-grid">
+                  <div class="payment-method money"><span>Dinheiro</span><strong id="dash-dinheiro">R$ 0,00</strong></div>
+                  <div class="payment-method pix"><span>Pix</span><strong id="dash-pix-detail">R$ 0,00</strong></div>
+                  <div class="payment-method card"><span>Cartão/Máquina</span><strong id="dash-cartao-detail">R$ 0,00</strong></div>
+                </div>
+                <div id="finance-payment-bars" class="payment-bars desktop"></div>
+              </article>
+            </section>
+
+            <section class="finance-bottom-grid">
+              <article class="finance-card details-card">
+                <h3>Detalhamento do período</h3>
+                <div class="detail-row"><span>Total recebido</span><strong id="dash-recebido-detail">R$ 0,00</strong></div>
+                <div class="detail-row"><span>Total em dinheiro</span><strong id="dash-dinheiro-detail">R$ 0,00</strong></div>
+                <div class="detail-row"><span>Total digital</span><strong id="dash-digital">R$ 0,00</strong></div>
+                <div class="detail-row"><span>Total pendente</span><strong id="dash-pendente-detail">R$ 0,00</strong></div>
+              </article>
+
+              <article class="finance-card insight-card">
+                <h3>Leitura rápida</h3>
+                <div id="finance-insights" class="finance-insights"></div>
+              </article>
+            </section>
           </div>
         </section>
       </div>
     </div>
 
     <div id="container-modais">
-      <div class="modal-overlay" id="modal-recebimento">
-        <div class="modal-box">
-          <h2>Receber Pagamento</h2>
-          <p id="modal-info-cliente"></p>
-          <input
-            type="number"
-            id="modal-valor"
-            placeholder="Digite o valor"
-            step="0.01"
-          />
-          <div class="modal-actions">
-            <button class="btn-cancelar" onclick="fecharModalRecebimento()">
-              Cancelar
-            </button>
-            <button class="btn-confirmar" onclick="confirmarRecebimento()">
-              Confirmar
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="modal-overlay" id="modal-alerta-peca">
-        <div class="modal-box">
-          <h3 style="color: var(--accent-primary); margin-bottom: 15px">
-            ⚠️ Peça não adicionada
-          </h3>
-          <p
-            id="msg-alerta-peca"
-            style="margin-bottom: 20px; line-height: 1.5"
-          ></p>
-          <div class="modal-actions">
-            <button class="btn-cancelar" onclick="fecharModalAlerta()">
-              Voltar e Adicionar
-            </button>
-            <button
-              class="btn-confirmar"
-              style="background: #6366f1"
-              onclick="limparCamposPecaEFechar()"
-            >
-              Limpar e Finalizar
-            </button>
-          </div>
-        </div>
-      </div>
+      <div class="modal-overlay" id="modal-recebimento"><div class="modal-box"><h2>Receber Pagamento</h2><p id="modal-info-cliente"></p><input type="number" id="modal-valor" placeholder="Digite o valor" step="0.01" /><small id="modal-recebimento-aviso" class="modal-help"></small><div class="modal-actions"><button id="btn-cancelar-recebimento" class="btn-cancelar">Cancelar</button><button id="btn-confirmar-recebimento" class="btn-confirmar">Confirmar</button></div></div></div>
+      <div class="modal-overlay" id="modal-alerta-peca"><div class="modal-box"><h3 style="color:var(--accent-primary);margin-bottom:15px">⚠️ Peça não adicionada</h3><p id="msg-alerta-peca" style="margin-bottom:20px;line-height:1.5"></p><div class="modal-actions"><button id="btn-fechar-alerta" class="btn-cancelar">Voltar e Adicionar</button><button id="btn-limpar-peca-fechar" class="btn-confirmar" style="background:#6366f1">Descartar peça e continuar</button></div></div></div>
+      <div class="modal-overlay" id="modal-novo-atalho"><div class="modal-box"><h2>Novo atalho rápido</h2><p class="modal-help">Digite o nome do serviço que deve aparecer na aba Serviço.</p><input type="text" id="modal-atalho-nome" placeholder="Ex: Limpeza de TBI" /><div class="modal-actions"><button id="btn-cancelar-atalho" class="btn-cancelar">Cancelar</button><button id="btn-confirmar-atalho" class="btn-confirmar">Adicionar</button></div></div></div>
+      <div class="modal-overlay" id="modal-orcamento-zero"><div class="modal-box modal-warning"><h2>Orçamento sem valor</h2><p class="modal-help" id="modal-orcamento-zero-msg">O orçamento está sem peças e sem mão de obra. Deseja enviar mesmo assim?</p><div class="modal-actions"><button id="btn-cancelar-orcamento-zero" class="btn-cancelar">Voltar e corrigir</button><button id="btn-confirmar-orcamento-zero" class="btn-confirmar">Enviar mesmo assim</button></div></div></div>
     </div>
-
     <div id="status"></div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js"></script>
+    <script type="module" src="js/app.js"></script>
   </body>
 </html>
