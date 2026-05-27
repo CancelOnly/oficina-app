@@ -1,6 +1,6 @@
 import { api } from './api.js';
 import { state } from './state.js';
-import { $, limparPlaca, numero, moeda, escapeHTML, telefoneWhatsapp, mostrarStatus, DDD_PADRAO } from './utils.js';
+import { $, limparPlaca, numero, moeda, escapeHTML, telefoneWhatsapp, mostrarStatus, DDI_PADRAO, DDD_PADRAO, dadosTelefoneVeiculo, formatarTelefoneExibicao } from './utils.js';
 
 function chaveRascunho(placa) { return `orcamento_${placa}`; }
 function salvarAtalhos() { localStorage.setItem('config_atalhos', JSON.stringify(state.atalhos)); }
@@ -46,11 +46,12 @@ function atualizarHeader(data) {
   if ($('headerCor')) $('headerCor').innerText = `Cor: ${data.cor || '---'}`;
   if ($('headerKm')) $('headerKm').innerText = `KM: ${data.km_atual || 0}`;
   $('headerCliente').innerText = data.nome_cliente || 'Cliente não informado';
-  $('headerTelefone').innerText = data.telefone_cliente || '---';
+  $('headerTelefone').innerText = formatarTelefoneExibicao(data);
 }
 
 function limparCamposCadastroServico() {
   ['placa','nome_cliente','modelo','cor','ano','perfil','servico','km','valor_maodeobra','valor_pago','peca_nome','peca_valor'].forEach((id) => { const el = $(id); if (el) el.value = ''; });
+  if ($('ddi_cliente')) $('ddi_cliente').value = DDI_PADRAO;
   $('ddd_cliente').value = DDD_PADRAO;
   $('tel_cliente').value = '';
   setFormaPagamento('pendente');
@@ -73,9 +74,10 @@ function abrirVeiculo(data) {
 
   $('placa').value = data.placa || '';
   $('nome_cliente').value = data.nome_cliente || '';
-  const tel = String(data.telefone_cliente || '').replace(/^55/, '').replace(/\D/g, '');
-  $('ddd_cliente').value = tel ? tel.substring(0, 2) : DDD_PADRAO;
-  $('tel_cliente').value = tel ? tel.substring(2) : '';
+  const tel = dadosTelefoneVeiculo(data);
+  if ($('ddi_cliente')) $('ddi_cliente').value = tel.ddi || DDI_PADRAO;
+  $('ddd_cliente').value = tel.ddd || DDD_PADRAO;
+  $('tel_cliente').value = tel.numero || '';
   $('modelo').value = data.modelo || '';
   if ($('cor')) $('cor').value = data.cor || '';
   $('ano').value = data.ano || '';
@@ -115,12 +117,16 @@ async function buscarVeiculo() {
 async function salvarCadastro() {
   const placa = limparPlaca($('placa').value);
   if (!placa) return mostrarStatus('A placa é obrigatória', 'alerta');
+  const ddi = ($('ddi_cliente')?.value || DDI_PADRAO).replace(/\D/g, '') || DDI_PADRAO;
   const ddd = $('ddd_cliente').value.replace(/\D/g, '') || DDD_PADRAO;
   const tel = $('tel_cliente').value.replace(/\D/g, '');
   const dados = {
     placa,
     nome_cliente: $('nome_cliente').value.trim(),
-    telefone_cliente: tel ? `55${ddd}${tel}` : '',
+    ddi_cliente: ddi,
+    ddd_cliente: ddd,
+    telefone_numero: tel,
+    telefone_cliente: tel ? `${ddi}${ddd}${tel}` : '',
     modelo: $('modelo').value.trim(),
     cor: $('cor')?.value.trim() || '',
     ano: parseInt($('ano').value) || 0,
@@ -587,13 +593,32 @@ async function carregarHistorico(placa) {
       el.className = 'servico-item';
       el.dataset.id = item.id;
       el.innerHTML = `
-        <div class="historico-header" data-toggle-historico="${index}">
-          <div><div style="display:flex; gap:10px; align-items:center; margin-bottom:6px"><span style="font-size:.95rem; opacity:.85; font-weight:bold">${escapeHTML(item.data || '-')}</span><span class="badge-km">📍 ${escapeHTML(item.km || 0)} KM</span></div><p><strong>${escapeHTML(item.servico || 'Sem descrição')}</strong></p></div>
-          <div class="historico-header-right"><strong style="color:var(--accent-primary); display:block; font-size:1.2rem">${moeda(total)}</strong><span id="seta-${index}">ver detalhes ▼</span></div>
+        <div class="historico-header history-polished-header" data-toggle-historico="${index}">
+          <div class="history-head-left">
+            <div class="history-meta-line"><span>${escapeHTML(item.data || '-')}</span><span class="badge-km">📍 ${escapeHTML(item.km || 0)} KM</span></div>
+            <p><strong>${escapeHTML(item.servico || 'Sem descrição')}</strong></p>
+          </div>
+          <div class="historico-header-right"><strong>${moeda(total)}</strong><span id="seta-${index}">ver detalhes ▼</span></div>
         </div>
-        <div class="historico-body" id="historico-${index}" style="padding:0 15px 15px 15px">
-          <div class="historico-servico-box" style="margin-top:10px"><small style="opacity:.6; display:block; margin-bottom:8px; font-weight:bold">PEÇAS E COMPONENTES</small>${pecasHTML}</div>
-          <div class="historico-financeiro"><div><small>Situação</small><div><span class="status-${escapeHTML(status)}">${escapeHTML(status.toUpperCase())}</span></div></div><div><small>Pago</small><strong>${moeda(pago)}</strong></div><div><small>Restante</small><strong style="color:${restante > 0 ? '#ef4444' : 'inherit'}">${moeda(restante)}</strong></div><div><small>Forma</small><span>${escapeHTML(item.forma_pagamento || '-')}</span></div></div>
+        <div class="historico-body history-detail-grid" id="historico-${index}">
+          <section class="history-detail-block history-description-block">
+            <small>Serviço</small>
+            <p>${escapeHTML(item.servico || 'Sem descrição')}</p>
+          </section>
+          <section class="history-detail-block">
+            <small>Peças e componentes</small>
+            <div class="history-parts-list">${pecasHTML}</div>
+          </section>
+          <section class="history-detail-block history-payment-block">
+            <small>Pagamento</small>
+            <div class="history-payment-grid">
+              <div><span>Situação</span><strong><span class="status-${escapeHTML(status)}">${escapeHTML(status.toUpperCase())}</span></strong></div>
+              <div><span>Total</span><strong>${moeda(total)}</strong></div>
+              <div><span>Pago</span><strong>${moeda(pago)}</strong></div>
+              <div class="history-restante"><span>Restante</span><strong style="color:${restante > 0 ? '#ef4444' : 'inherit'}">${moeda(restante)}</strong></div>
+              <div><span>Forma</span><strong>${escapeHTML(item.forma_pagamento || '-')}</strong></div>
+            </div>
+          </section>
         </div>`;
       if (status !== 'pago') {
         const acoes = document.createElement('div');
@@ -626,9 +651,32 @@ async function carregarPendentes() {
     pendentes.forEach((item) => {
       const total = numero(item.valor_total), pago = numero(item.valor_pago), restante = Math.max(0, total - pago);
       const el = document.createElement('div');
-      el.className = 'servico-item pendencia-click highlight-pendente';
-      el.innerHTML = `<div class="historico-header"><div><div style="display:flex;gap:10px;align-items:center;margin-bottom:4px"><span class="badge-km" style="background:var(--accent-primary);color:black">${escapeHTML(item.placa)}</span><span style="font-size:.8rem;opacity:.7">${escapeHTML(item.data || '')}</span></div><strong>${escapeHTML(item.servico || 'Serviço sem descrição')}</strong></div><div class="historico-header-right"><small>FALTA PAGAR</small><strong style="color:#ef4444;font-size:1.2rem">${moeda(restante)}</strong><span>clique para abrir ▼</span></div></div><div class="historico-body" style="padding:0 15px 15px 15px; display:block; opacity:.8"><div style="display:flex;justify-content:space-between;font-size:.85rem;border-top:1px solid var(--border-color);margin-top:10px;padding-top:10px"><span>Total: ${moeda(total)}</span><span>Já pago: ${moeda(pago)}</span></div></div>`;
+      el.className = 'pendencia-card pendencia-click highlight-pendente';
+      el.innerHTML = `
+        <div class="pendencia-card-top">
+          <span class="mini-plate">${escapeHTML(item.placa || '-')}</span>
+          <span class="pendencia-date">${escapeHTML(item.data || '')}</span>
+        </div>
+        <div class="pendencia-client-line">
+          <strong>${escapeHTML(item.nome_cliente || 'Cliente não informado')}</strong>
+          <span>${escapeHTML([item.modelo, item.ano, item.cor].filter(Boolean).join(' • ') || 'Veículo sem detalhes')}</span>
+        </div>
+        <p class="pendencia-servico">${escapeHTML(item.servico || 'Serviço sem descrição')}</p>
+        <div class="pendencia-values">
+          <div><small>Total</small><strong>${moeda(total)}</strong></div>
+          <div><small>Pago</small><strong>${moeda(pago)}</strong></div>
+          <div class="pendencia-restante"><small>Falta pagar</small><strong>${moeda(restante)}</strong></div>
+        </div>
+        <div class="pendencia-actions-row">
+          <span>${escapeHTML(formatarTelefoneExibicao(item))}</span>
+          <button type="button" class="btn-receber pendencia-receber">Receber pagamento</button>
+        </div>
+        <small class="pendencia-open-hint">Clique no card para abrir no histórico do veículo.</small>`;
       el.addEventListener('click', () => abrirPendencia(item.id, item.placa));
+      el.querySelector('.pendencia-receber')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        receberPagamento(item.id, restante, item.placa);
+      });
       container.appendChild(el);
     });
   } catch (err) { console.error(err); mostrarStatus('Erro ao carregar pendências', 'erro'); }
@@ -746,11 +794,37 @@ async function carregarClientes() {
   catch (err) { console.error(err); mostrarStatus('Não foi possível carregar clientes', 'erro'); }
 }
 function renderizarTabelaClientes(lista) {
-  const tbody = $('lista-clientes'); if (!tbody) return; tbody.innerHTML = '';
+  const tbody = $('lista-clientes');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  if (!lista.length) {
+    const tr = document.createElement('tr');
+    tr.className = 'cliente-row empty-row';
+    tr.innerHTML = `<td data-label="Resultado" colspan="9">Nenhum cliente encontrado.</td>`;
+    tbody.appendChild(tr);
+    return;
+  }
+
+  const labels = ['Cliente', 'Placa', 'Modelo', 'Cor', 'Ano', 'KM', 'Última visita', 'Perfil', 'Telefone'];
+
   lista.forEach((c) => {
-    const tr = document.createElement('tr'); tr.className = 'cliente-row';
-    tr.innerHTML = `<td><strong>${escapeHTML(c.nome_cliente || '-')}</strong></td><td>${escapeHTML(c.placa || '-')}</td><td>${escapeHTML(c.modelo || '-')}</td><td>${escapeHTML(c.cor || '-')}</td><td>${escapeHTML(c.ano || '-')}</td><td>${escapeHTML(c.km_atual || 0)} km</td><td>${escapeHTML(c.data_ultimo_servico || 'Sem registro')}</td><td>${escapeHTML(c.perfil_tecnico || '-')}</td><td>${escapeHTML(c.telefone_cliente || '-')}</td>`;
-    tr.addEventListener('click', () => abrirCliente(c.placa)); tbody.appendChild(tr);
+    const tr = document.createElement('tr');
+    tr.className = 'cliente-row';
+    const valores = [
+      `<strong>${escapeHTML(c.nome_cliente || '-')}</strong>`,
+      `<span class="table-plate">${escapeHTML(c.placa || '-')}</span>`,
+      escapeHTML(c.modelo || '-'),
+      escapeHTML(c.cor || '-'),
+      escapeHTML(c.ano || '-'),
+      `${escapeHTML(c.km_atual || 0)} km`,
+      escapeHTML(c.data_ultimo_servico || 'Sem registro'),
+      escapeHTML(c.perfil_tecnico || '-'),
+      escapeHTML(formatarTelefoneExibicao(c)),
+    ];
+    tr.innerHTML = valores.map((valor, index) => `<td data-label="${labels[index]}">${valor}</td>`).join('');
+    tr.addEventListener('click', () => abrirCliente(c.placa));
+    tbody.appendChild(tr);
   });
 }
 function ordenarClientes(coluna) {
@@ -911,6 +985,7 @@ function lerConfigOficinaDoFormulario() {
     bairro: $('config-oficina-bairro')?.value.trim() || '',
     cidade: $('config-oficina-cidade')?.value.trim() || '',
     cep: $('config-oficina-cep')?.value.trim() || '',
+    servicosCabecalho: $('config-oficina-servicos')?.value.trim() || '',
   };
 }
 
@@ -924,6 +999,8 @@ function preencherConfigOficina() {
   if ($('config-oficina-bairro')) $('config-oficina-bairro').value = cfg.bairro || '';
   if ($('config-oficina-cidade')) $('config-oficina-cidade').value = cfg.cidade || '';
   if ($('config-oficina-cep')) $('config-oficina-cep').value = cfg.cep || '';
+  if ($('config-oficina-servicos')) $('config-oficina-servicos').value = cfg.servicosCabecalho || '';
+  aplicarIdentidadeOficina();
 }
 
 function salvarConfigOficina() {
@@ -931,26 +1008,199 @@ function salvarConfigOficina() {
   localStorage.setItem('config_oficina', JSON.stringify(state.configOficina));
   const status = $('config-oficina-status');
   if (status) status.textContent = 'Informações salvas. Elas serão usadas nas próximas OS em PDF.';
+  aplicarIdentidadeOficina();
   mostrarStatus('Configurações da oficina salvas', 'sucesso');
+}
+
+
+function aplicarIdentidadeOficina() {
+  const cfg = state.configOficina || {};
+  const nome = cfg.nome || 'Oficina';
+  const subtitulo = cfg.subtitulo || 'Sistema local';
+  const sidebarNome = $('sidebar-oficina-nome');
+  const sidebarSubtitulo = $('sidebar-oficina-subtitulo');
+  if (sidebarNome) sidebarNome.textContent = nome;
+  if (sidebarSubtitulo) sidebarSubtitulo.textContent = subtitulo;
+  aplicarLogoInterface();
+}
+
+function renderLogoMarkup(classe = 'logo-img') {
+  if (state.logoOficina?.exists && state.logoOficina?.url) {
+    return `<img class="${classe}" src="${state.logoOficina.url}" alt="Logo da oficina" />`;
+  }
+  const cfg = state.configOficina || {};
+  return `<span class="logo-text-fallback"><strong>${escapeHTML(cfg.nome || 'Oficina')}</strong><small>${escapeHTML(cfg.subtitulo || 'Sistema local')}</small></span>`;
+}
+
+function aplicarLogoInterface() {
+  const previewSidebar = $('sidebar-logo-preview');
+  const previewConfig = $('config-logo-preview');
+  const status = $('config-logo-status');
+  const markupSidebar = renderLogoMarkup('sidebar-logo-img');
+  const markupConfig = renderLogoMarkup('config-logo-img');
+  if (previewSidebar) previewSidebar.innerHTML = markupSidebar;
+  if (previewConfig) previewConfig.innerHTML = markupConfig;
+  if (status) {
+    status.textContent = state.logoOficina?.exists
+      ? 'Logo carregada. Ela será usada na sidebar e na próxima OS em PDF.'
+      : 'Nenhuma logo enviada. A OS usará o nome da oficina como fallback.';
+  }
+}
+
+async function carregarLogoOficina() {
+  try {
+    const data = await api.consultarLogo();
+    state.logoOficina = data || { exists: false, url: null };
+  } catch (err) {
+    console.error(err);
+    state.logoOficina = { exists: false, url: null };
+  }
+  aplicarLogoInterface();
+}
+
+async function enviarLogoOficina() {
+  const input = $('config-logo-input');
+  const arquivo = input?.files?.[0];
+  if (!arquivo) return mostrarStatus('Selecione uma imagem de logo primeiro', 'alerta');
+  const tipos = ['image/png', 'image/jpeg', 'image/webp'];
+  if (!tipos.includes(arquivo.type)) return mostrarStatus('Use PNG, JPG/JPEG ou WEBP', 'alerta');
+  if (arquivo.size > 2 * 1024 * 1024) return mostrarStatus('A logo deve ter no máximo 2MB', 'alerta');
+  try {
+    const data = await api.enviarLogo(arquivo);
+    state.logoOficina = data || { exists: false, url: null };
+    if (input) input.value = '';
+    aplicarLogoInterface();
+    mostrarStatus('Logo da oficina atualizada', 'sucesso');
+  } catch (err) {
+    console.error(err);
+    mostrarStatus(err.message || 'Erro ao enviar logo', 'erro');
+  }
+}
+
+async function removerLogoOficina() {
+  try {
+    await api.removerLogo();
+    state.logoOficina = { exists: false, url: null };
+    aplicarLogoInterface();
+    mostrarStatus('Logo removida', 'sucesso');
+  } catch (err) {
+    console.error(err);
+    mostrarStatus(err.message || 'Erro ao remover logo', 'erro');
+  }
+}
+
+async function carregarStatusBackup() {
+  const ultimo = $('backup-ultimo');
+  const pasta = $('backup-pasta');
+  try {
+    const data = await api.statusBackup();
+    if (pasta) pasta.textContent = `Pasta: ${data.backup_dir || 'backups/'}`;
+    if (ultimo) {
+      if (data.last_backup) {
+        const dt = new Date(data.last_backup.created_at);
+        const quando = Number.isNaN(dt.getTime()) ? data.last_backup.created_at : dt.toLocaleString('pt-BR');
+        ultimo.textContent = `${data.last_backup.file} • ${quando}`;
+      } else {
+        ultimo.textContent = 'Nenhum backup encontrado';
+      }
+    }
+  } catch (err) {
+    console.error(err);
+    if (ultimo) ultimo.textContent = 'Não foi possível consultar backup';
+  }
+}
+
+async function fazerBackupAgora() {
+  const btn = $('btn-fazer-backup');
+  const textoOriginal = btn?.textContent;
+  try {
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Fazendo backup...';
+    }
+    const data = await api.fazerBackup();
+    mostrarStatus('Backup criado com sucesso', 'sucesso');
+    await carregarStatusBackup();
+    await carregarUltimosErros();
+    const ultimo = $('backup-ultimo');
+    if (ultimo && data.backup?.file) ultimo.textContent = data.backup.file;
+  } catch (err) {
+    console.error(err);
+    mostrarStatus(err.message || 'Erro ao criar backup', 'erro');
+    await carregarUltimosErros();
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = textoOriginal || 'Fazer backup agora';
+    }
+  }
+}
+
+async function carregarUltimosErros() {
+  const lista = $('lista-ultimos-erros');
+  if (!lista) return;
+  try {
+    const data = await api.ultimosErros();
+    const erros = Array.isArray(data.errors) ? data.errors : [];
+    if (!erros.length) {
+      lista.innerHTML = '<div class="empty-log">Nenhum erro registrado.</div>';
+      return;
+    }
+    lista.innerHTML = erros.slice(0, 8).map((erro) => {
+      const dataErro = erro.ts ? new Date(erro.ts).toLocaleString('pt-BR') : '-';
+      return `<div class="log-item"><strong>${escapeHTML(dataErro)}</strong><span>${escapeHTML(erro.message || 'Erro')}</span></div>`;
+    }).join('');
+  } catch (err) {
+    console.error(err);
+    lista.innerHTML = '<div class="empty-log">Não foi possível carregar os erros.</div>';
+  }
 }
 
 function abrirWhatsRapido() {
   if (!state.veiculoAtual) return mostrarStatus('Nenhum veículo carregado', 'alerta');
-  const tel = telefoneWhatsapp(state.veiculoAtual.telefone_cliente || '');
+  const tel = telefoneWhatsapp(state.veiculoAtual);
   if (!tel) return mostrarStatus('Telefone não encontrado', 'alerta');
   window.open(`https://wa.me/${tel}`, '_blank');
 }
 
 function linhasPecasParaPDF() {
   const linhas = [...state.listaPecas];
-  while (linhas.length < 12) linhas.push({ nome: '', valor: '' });
-  return linhas.slice(0, 12).map((p, index) => `
+  while (linhas.length < 10) linhas.push({ nome: '', valor: '' });
+  return linhas.slice(0, 10).map((p) => `
     <tr>
       <td class="os-qtd">${p.nome ? '1' : '&nbsp;'}</td>
       <td>${escapeHTML(p.nome || '')}</td>
       <td class="os-valor">${p.nome ? moeda(p.valor) : ''}</td>
     </tr>
   `).join('');
+}
+
+function servicosCabecalhoPDF() {
+  const cfg = state.configOficina || {};
+  const linhas = String(cfg.servicosCabecalho || '')
+    .split('\\n')
+    .map((linha) => linha.trim())
+    .filter(Boolean);
+  const fallback = ['Mecânica geral', 'Revisões', 'Freios', 'Suspensão', 'Injeção eletrônica'];
+  return (linhas.length ? linhas : fallback)
+    .slice(0, 8)
+    .map((item) => `<li>${escapeHTML(item)}</li>`)
+    .join('');
+}
+
+function numeroOSAtual() {
+  const id = state.osAtual?.id || state.ordemServicoAtual?.id || null;
+  if (!id) return 'ORÇAMENTO / PRÉVIA';
+  return `OS Nº ${String(id).padStart(6, '0')}`;
+}
+
+function logoPDFMarkup() {
+  const cfg = state.configOficina || {};
+  if (state.logoOficina?.exists && state.logoOficina?.url) {
+    const src = state.logoOficina.url.startsWith('http') ? state.logoOficina.url : `${window.location.origin}${state.logoOficina.url}`;
+    return `<img class="os-logo-img" src="${escapeHTML(src)}" alt="Logo da oficina" />`;
+  }
+  return `<div class="os-logo-text"><strong>${escapeHTML(cfg.nome || 'OFICINA')}</strong><small>${escapeHTML(cfg.subtitulo || 'Mecânica Multimarcas')}</small></div>`;
 }
 
 function gerarPDFOrdemServico() {
@@ -960,11 +1210,16 @@ function gerarPDFOrdemServico() {
   const totalPecas = numero($('valor_pecas').value);
   const mao = numero($('valor_maodeobra').value);
   const total = numero($('valor_total').value);
-  const dataAtual = new Date().toLocaleDateString('pt-BR');
+  const pago = numero($('valor_pago').value);
+  const restante = Math.max(0, total - pago);
+  const dataAgora = new Date();
+  const dataAtual = dataAgora.toLocaleDateString('pt-BR');
+  const horaAtual = dataAgora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   const servico = $('servico').value.trim();
   const cfg = state.configOficina || {};
-  const endereco = [cfg.rua, cfg.bairro, cfg.cidade].filter(Boolean).join(' • ');
-  const docInfo = [cfg.cnpj ? `CNPJ: ${cfg.cnpj}` : '', cfg.cep ? `CEP: ${cfg.cep}` : ''].filter(Boolean).join(' • ');
+  const endereco = [cfg.rua, cfg.bairro].filter(Boolean).join(' • ');
+  const cidadeCep = [cfg.cidade, cfg.cep ? `CEP: ${cfg.cep}` : ''].filter(Boolean).join(' • ');
+  const docInfo = [cfg.cnpj ? `CNPJ: ${cfg.cnpj}` : '', cfg.telefone ? `Fone: ${cfg.telefone}` : ''].filter(Boolean).join(' • ');
   const win = window.open('', '_blank', 'width=900,height=1100');
   if (!win) return mostrarStatus('Permita pop-ups para gerar a OS', 'alerta');
 
@@ -974,117 +1229,118 @@ function gerarPDFOrdemServico() {
   <meta charset="UTF-8" />
   <title>Ordem de Serviço - ${escapeHTML(state.veiculoAtual.placa || '')}</title>
   <style>
-    :root { --ink:#111827; --line:#111827; --muted:#4b5563; --paper:#fff; }
+    :root { --ink:#111827; --line:#111827; --muted:#4b5563; --paper:#fff; --soft:#f3f4f6; }
     * { box-sizing: border-box; }
     body { margin: 0; background: #e5e7eb; color: var(--ink); font-family: Arial, Helvetica, sans-serif; }
-    .os-page { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 12mm; background: var(--paper); }
-    .os-top { display: grid; grid-template-columns: 1.4fr 1fr; border: 2px solid var(--line); }
-    .os-brand { padding: 12px 14px; border-right: 2px solid var(--line); }
-    .os-logo { font-size: 30px; font-weight: 900; letter-spacing: .5px; }
-    .os-logo small { display:block; font-size: 12px; font-weight: 600; letter-spacing: normal; color: var(--muted); }
+    .os-page { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 10mm; background: var(--paper); }
+    .os-frame { border: 2px solid var(--line); }
+    .os-top { display: grid; grid-template-columns: 1.35fr .95fr; border-bottom: 2px solid var(--line); }
+    .os-brand { padding: 12px 14px; border-right: 2px solid var(--line); min-height: 126px; }
+    .os-logo-wrap { min-height: 58px; display:flex; align-items:center; gap: 10px; }
+    .os-logo-img { max-width: 220px; max-height: 58px; object-fit: contain; display:block; }
+    .os-logo-text strong { display:block; font-size: 27px; font-weight: 900; letter-spacing: .4px; line-height: 1; }
+    .os-logo-text small { display:block; margin-top:4px; font-size: 12px; font-weight: 700; color: var(--muted); }
     .os-company { margin-top: 10px; font-size: 12px; line-height: 1.35; }
     .os-title { padding: 12px 14px; }
-    .os-title h1 { margin: 0 0 8px; font-size: 22px; text-align: center; }
-    .os-title ul { margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.45; }
-    .os-line-grid { display: grid; grid-template-columns: 1.5fr .9fr; border-left: 2px solid var(--line); border-right: 2px solid var(--line); }
+    .os-title h1 { margin: 0 0 4px; font-size: 22px; text-align: center; letter-spacing:.4px; }
+    .os-number { text-align:center; font-size: 12px; font-weight: 800; margin-bottom: 7px; }
+    .os-title ul { margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.35; }
+    .os-line-grid { display: grid; grid-template-columns: 1.3fr .8fr; }
     .os-field { min-height: 34px; padding: 5px 8px; border-bottom: 2px solid var(--line); border-right: 2px solid var(--line); font-size: 13px; }
     .os-field:nth-child(2n) { border-right: 0; }
-    .os-label { font-weight: 700; font-size: 10px; text-transform: uppercase; color: var(--muted); margin-right: 6px; }
-    .os-car-grid { display: grid; grid-template-columns: 1fr 1fr 1fr .75fr; border-left: 2px solid var(--line); border-right: 2px solid var(--line); }
+    .os-label { font-weight: 800; font-size: 10px; text-transform: uppercase; color: var(--muted); margin-right: 6px; }
+    .os-car-grid { display: grid; grid-template-columns: 1fr 1fr 1fr .75fr; }
     .os-car-grid .os-field { border-right: 2px solid var(--line); }
     .os-car-grid .os-field:nth-child(4n) { border-right: 0; }
-    .os-section-title { border-left: 2px solid var(--line); border-right: 2px solid var(--line); border-bottom: 2px solid var(--line); padding: 8px; text-align:center; font-weight: 800; letter-spacing:.5px; }
+    .os-section-title { border-bottom: 2px solid var(--line); padding: 7px; text-align:center; font-weight: 900; letter-spacing:.5px; background: var(--soft); }
     table { width: 100%; border-collapse: collapse; }
-    .os-table { border-left: 2px solid var(--line); border-right: 2px solid var(--line); }
     .os-table th, .os-table td { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); height: 28px; padding: 4px 6px; font-size: 13px; }
+    .os-table th { background: var(--soft); font-size: 11px; text-transform: uppercase; }
     .os-table th:last-child, .os-table td:last-child { border-right: 0; }
     .os-qtd { width: 38px; text-align:center; }
-    .os-valor { width: 95px; text-align:right; }
+    .os-valor { width: 98px; text-align:right; }
     .os-service-text { white-space: pre-wrap; line-height: 1.35; }
-    .os-bottom { display: grid; grid-template-columns: 1.9fr .9fr; border-left: 2px solid var(--line); border-right: 2px solid var(--line); border-bottom: 2px solid var(--line); }
-    .os-obs { min-height: 145px; padding: 8px; border-right: 2px solid var(--line); }
-    .os-totals { display: grid; grid-template-columns: 1fr 1fr; }
-    .os-total-row { display: contents; }
-    .os-total-row span, .os-total-row strong { padding: 7px 8px; border-bottom: 1px solid var(--line); font-size: 12px; }
-    .os-total-row strong { text-align:right; border-left: 1px solid var(--line); }
-    .os-grand span, .os-grand strong { font-size: 15px; font-weight: 900; border-bottom: 0; }
-    .os-sign { margin-top: 36px; text-align:center; font-size: 12px; }
+    .os-bottom { display: grid; grid-template-columns: 1.85fr .9fr; border-top: 2px solid var(--line); }
+    .os-obs { min-height: 150px; padding: 8px; border-right: 2px solid var(--line); }
+    .os-auth { margin-top: 28px; font-size: 11px; line-height: 1.4; max-width: 92%; }
+    .os-sign { margin-top: 34px; text-align:center; font-size: 12px; }
     .os-sign-line { border-top: 1px solid var(--line); width: 78%; margin: 0 auto 6px; }
-    .os-footer { margin-top: 10px; font-size: 10px; color: var(--muted); display:flex; justify-content:space-between; }
-    @media print { body { background:#fff; } .os-page { margin:0; width: auto; min-height: auto; padding: 8mm; } @page { size: A4; margin: 0; } }
+    .os-totals { display: grid; grid-template-columns: 1fr 1fr; align-content:start; }
+    .os-total-row { display: contents; }
+    .os-total-row span, .os-total-row strong { padding: 8px 9px; border-bottom: 1px solid var(--line); font-size: 12px; }
+    .os-total-row strong { text-align:right; border-left: 1px solid var(--line); }
+    .os-grand span, .os-grand strong { font-size: 15px; font-weight: 900; border-bottom: 2px solid var(--line); background: var(--soft); }
+    .os-payment-note { grid-column: 1 / -1; padding: 8px 9px; font-size: 11px; color: var(--muted); line-height:1.35; }
+    .os-footer { margin-top: 9px; font-size: 10px; color: var(--muted); display:flex; justify-content:space-between; }
+    @media print { body { background:#fff; } .os-page { margin:0; width: auto; min-height: auto; padding: 8mm; } @page { size: A4 portrait; margin: 0; } }
   </style>
 </head>
 <body>
   <div class="os-page">
-    <div class="os-top">
-      <div class="os-brand">
-        <div class="os-logo">${escapeHTML(cfg.nome || 'OFICINA')} <small>${escapeHTML(cfg.subtitulo || 'Mecânica')}</small></div>
-        <div class="os-company">
-          ${escapeHTML(endereco || 'Endereço não informado')}<br />
-          ${escapeHTML(cfg.telefone ? `Fone: ${cfg.telefone}` : 'Telefone não informado')}<br />
-          ${escapeHTML(docInfo || '')}
+    <div class="os-frame">
+      <div class="os-top">
+        <div class="os-brand">
+          <div class="os-logo-wrap">${logoPDFMarkup()}</div>
+          <div class="os-company">
+            ${escapeHTML(endereco || 'Endereço não informado')}<br />
+            ${escapeHTML(cidadeCep || '')}<br />
+            ${escapeHTML(docInfo || '')}
+          </div>
+        </div>
+        <div class="os-title">
+          <h1>ORDEM DE SERVIÇO</h1>
+          <div class="os-number">${escapeHTML(numeroOSAtual())} • ${dataAtual}</div>
+          <ul>${servicosCabecalhoPDF()}</ul>
         </div>
       </div>
-      <div class="os-title">
-        <h1>ORDEM DE SERVIÇO</h1>
-        <ul>
-          <li>Injeção Eletrônica</li>
-          <li>Reparos eletrônicos de motores</li>
-          <li>Revisão de freios</li>
-          <li>Revisão de suspensão</li>
-          <li>Reforma de motores</li>
-        </ul>
+
+      <div class="os-line-grid">
+        <div class="os-field"><span class="os-label">Nome</span>${escapeHTML(state.veiculoAtual.nome_cliente || '')}</div>
+        <div class="os-field"><span class="os-label">Fone</span>${escapeHTML(formatarTelefoneExibicao(state.veiculoAtual))}</div>
+        <div class="os-field"><span class="os-label">End.</span></div>
+        <div class="os-field"><span class="os-label">CPF/CNPJ</span></div>
       </div>
-    </div>
 
-    <div class="os-line-grid">
-      <div class="os-field"><span class="os-label">Nome</span>${escapeHTML(state.veiculoAtual.nome_cliente || '')}</div>
-      <div class="os-field"><span class="os-label">CPF</span></div>
-      <div class="os-field"><span class="os-label">End.</span></div>
-      <div class="os-field"><span class="os-label">Fone</span>${escapeHTML(state.veiculoAtual.telefone_cliente || '')}</div>
-    </div>
+      <div class="os-car-grid">
+        <div class="os-field"><span class="os-label">Tipo/Modelo</span>${escapeHTML(state.veiculoAtual.modelo || '')}</div>
+        <div class="os-field"><span class="os-label">Cor</span>${escapeHTML(state.veiculoAtual.cor || '')}</div>
+        <div class="os-field"><span class="os-label">Placa</span>${escapeHTML(state.veiculoAtual.placa || '')}</div>
+        <div class="os-field"><span class="os-label">Ano</span>${escapeHTML(state.veiculoAtual.ano || '')}</div>
+        <div class="os-field"><span class="os-label">Data</span>${dataAtual}</div>
+        <div class="os-field"><span class="os-label">Quilometragem</span>${escapeHTML($('km').value || state.veiculoAtual.km_atual || '')}</div>
+        <div class="os-field"><span class="os-label">Combustível</span></div>
+        <div class="os-field"><span class="os-label">Mecânico</span></div>
+      </div>
 
-    <div class="os-car-grid">
-      <div class="os-field"><span class="os-label">Tipo/Modelo</span>${escapeHTML(state.veiculoAtual.modelo || '')}</div>
-      <div class="os-field"><span class="os-label">Cor</span>${escapeHTML(state.veiculoAtual.cor || '')}</div>
-      <div class="os-field"><span class="os-label">Placa</span>${escapeHTML(state.veiculoAtual.placa || '')}</div>
-      <div class="os-field"><span class="os-label">Ano</span>${escapeHTML(state.veiculoAtual.ano || '')}</div>
-      <div class="os-field"><span class="os-label">Data</span>${dataAtual}</div>
-      <div class="os-field"><span class="os-label">Quilometragem</span>${escapeHTML($('km').value || state.veiculoAtual.km_atual || '')}</div>
-      <div class="os-field"><span class="os-label">Combustível</span></div>
-      <div class="os-field"><span class="os-label">Mecânico</span></div>
-    </div>
+      <div class="os-section-title">SERVIÇOS E PEÇAS A EXECUTAR</div>
+      <table class="os-table">
+        <thead><tr><th class="os-qtd">Qtd.</th><th>Descrição</th><th class="os-valor">Valor</th></tr></thead>
+        <tbody>
+          <tr><td class="os-qtd">-</td><td class="os-service-text">${escapeHTML(servico || 'Serviço não informado')}</td><td class="os-valor">${mao ? moeda(mao) : ''}</td></tr>
+          ${linhasPecasParaPDF()}
+        </tbody>
+      </table>
 
-    <div class="os-section-title">SERVIÇOS A EXECUTAR</div>
-    <table class="os-table">
-      <thead><tr><th class="os-qtd">Qtd.</th><th>Descrição</th><th class="os-valor">Valor</th></tr></thead>
-      <tbody>
-        <tr><td class="os-qtd">-</td><td class="os-service-text">${escapeHTML(servico || 'Serviço não informado')}</td><td class="os-valor">${mao ? moeda(mao) : ''}</td></tr>
-        ${linhasPecasParaPDF()}
-      </tbody>
-    </table>
-
-    <div class="os-bottom">
-      <div class="os-obs">
-        <strong>OBS.:</strong>
-        <div class="os-sign">
-          <div class="os-sign-line"></div>
-          SERVIÇOS E PEÇAS A SEREM TROCADAS<br />COM AUTORIZAÇÃO DO CLIENTE
+      <div class="os-bottom">
+        <div class="os-obs">
+          <strong>OBS.:</strong>
+          <div class="os-auth">Declaro estar ciente e autorizo a execução dos serviços e troca das peças descritas nesta Ordem de Serviço.</div>
+          <div class="os-sign">
+            <div class="os-sign-line"></div>
+            SERVIÇOS E PEÇAS A SEREM TROCADAS<br />COM AUTORIZAÇÃO DO CLIENTE
+          </div>
+        </div>
+        <div class="os-totals">
+          <div class="os-total-row"><span>M.O. Mecânica</span><strong>${moeda(mao)}</strong></div>
+          <div class="os-total-row"><span>Peças</span><strong>${moeda(totalPecas)}</strong></div>
+          <div class="os-total-row os-grand"><span>TOTAL</span><strong>${moeda(total)}</strong></div>
+          <div class="os-payment-note">Pago: ${moeda(pago)}<br />Restante: ${moeda(restante)}<br />Forma: ${escapeHTML(getFormaPagamento())}</div>
         </div>
       </div>
-      <div class="os-totals">
-        <div class="os-total-row"><span>M.O. Mecânica</span><strong>${moeda(mao)}</strong></div>
-        <div class="os-total-row"><span>Peças</span><strong>${moeda(totalPecas)}</strong></div>
-        <div class="os-total-row"><span>Acessórios</span><strong></strong></div>
-        <div class="os-total-row"><span>Ó. Merc.</span><strong></strong></div>
-        <div class="os-total-row"><span>Lubrificantes</span><strong></strong></div>
-        <div class="os-total-row"><span>Serv. Terceiros</span><strong></strong></div>
-        <div class="os-total-row os-grand"><span>TOTAL</span><strong>${moeda(total)}</strong></div>
-      </div>
     </div>
-    <div class="os-footer"><span>Gerado pelo Sistema Oficina</span><span>${dataAtual}</span></div>
+    <div class="os-footer"><span>Gerado pelo Sistema Oficina</span><span>${escapeHTML(numeroOSAtual())} • ${dataAtual} ${horaAtual}</span></div>
   </div>
-  <script>window.onload = () => setTimeout(() => window.print(), 300);<\/script>
+  <script>window.onload = () => setTimeout(() => window.print(), 650);<\/script>
 </body>
 </html>`;
   win.document.open();
@@ -1096,7 +1352,7 @@ function gerarPDFOrdemServico() {
 function gerarWhatsApp() {
   if (!state.veiculoAtual) return mostrarStatus('Nenhum veículo carregado', 'alerta');
   if (!validarPecasObrigatorias('enviar o fechamento pelo WhatsApp')) return;
-  const tel = telefoneWhatsapp(state.veiculoAtual.telefone_cliente || '');
+  const tel = telefoneWhatsapp(state.veiculoAtual);
   if (!tel) return mostrarStatus('Telefone não encontrado', 'alerta');
   const texto = `Olá ${state.veiculoAtual.nome_cliente || ''}! Seu veículo está pronto.\nPlaca: ${state.veiculoAtual.placa}\nTotal: ${moeda(numero($('valor_total').value))}`;
   window.open(`https://wa.me/${tel}?text=${encodeURIComponent(texto)}`, '_blank');
@@ -1129,7 +1385,7 @@ Aguardando aprovação para execução do serviço.`;
 }
 
 function enviarOrcamentoWhatsApp() {
-  const tel = telefoneWhatsapp(state.veiculoAtual?.telefone_cliente || '');
+  const tel = telefoneWhatsapp(state.veiculoAtual || {});
   if (!tel) return mostrarStatus('Telefone não encontrado', 'alerta');
   window.open(`https://wa.me/${tel}?text=${encodeURIComponent(montarMensagemOrcamento())}`, '_blank');
   mostrarStatus('Orçamento encaminhado', 'sucesso');
@@ -1167,6 +1423,7 @@ function toggleTheme() { const isLight = document.body.classList.toggle('light-m
 function bindEventos() {
   registrarNavegacaoBasica();
   $('btn-buscar-veiculo')?.addEventListener('click', buscarVeiculo);
+  $('buscar_placa')?.addEventListener('input', (e) => { e.target.value = limparPlaca(e.target.value); });
   $('buscar_placa')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') buscarVeiculo(); });
   $('btn-salvar-cadastro')?.addEventListener('click', salvarCadastro);
   $('btn-adicionar-peca')?.addEventListener('click', adicionarPeca);
@@ -1192,6 +1449,10 @@ function bindEventos() {
   $('btn-cancelar-orcamento-zero')?.addEventListener('click', fecharModalOrcamentoZero);
   $('btn-confirmar-orcamento-zero')?.addEventListener('click', confirmarEnvioOrcamentoZero);
   $('btn-salvar-config-oficina')?.addEventListener('click', salvarConfigOficina);
+  $('btn-enviar-logo')?.addEventListener('click', enviarLogoOficina);
+  $('btn-remover-logo')?.addEventListener('click', removerLogoOficina);
+  $('config-logo-input')?.addEventListener('change', () => { const nome = $('config-logo-input')?.files?.[0]?.name; if (nome && $('config-logo-status')) $('config-logo-status').textContent = `Arquivo selecionado: ${nome}`; });
+  $('btn-fazer-backup')?.addEventListener('click', fazerBackupAgora);
   document.querySelectorAll('.payment-choice[data-pagamento]').forEach((btn) => btn.addEventListener('click', () => setFormaPagamento(btn.dataset.pagamento)));
   setFormaPagamento(getFormaPagamento());
   $('historico')?.addEventListener('click', (e) => { const h = e.target.closest('[data-toggle-historico]'); if (h) toggleHistorico(h.dataset.toggleHistorico); });
@@ -1255,6 +1516,9 @@ document.addEventListener('DOMContentLoaded', () => {
     ['OS abertas', () => carregarOrdensAbertas()],
     ['banner OS', () => atualizarBannerOS()],
     ['config oficina', () => preencherConfigOficina()],
+    ['logo oficina', () => carregarLogoOficina()],
+    ['status backup', () => carregarStatusBackup()],
+    ['logs erros', () => carregarUltimosErros()],
   ];
 
   tarefasIniciais.forEach(([nome, tarefa]) => {

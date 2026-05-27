@@ -22,6 +22,26 @@ async function request(path, options = {}) {
   return data;
 }
 
+
+async function requestForm(path, formData, options = {}) {
+  const response = await fetch(`${API}${path}`, {
+    method: options.method || 'POST',
+    body: formData,
+  });
+
+  let data = null;
+  try { data = await response.json(); } catch (_) {}
+
+  if (!response.ok) {
+    const err = new Error(data?.erro || `Erro HTTP ${response.status}`);
+    err.status = response.status;
+    err.data = data;
+    throw err;
+  }
+
+  return data;
+}
+
 export const api = {
   buscarVeiculo: (placa) => request(`/veiculo/${placa}`),
   listarVeiculos: () => request('/veiculos'),
@@ -36,4 +56,10 @@ export const api = {
   criarOrdemServico: (dados) => request('/ordens-servico', { method: 'POST', body: JSON.stringify(dados) }),
   atualizarOrdemServico: (id, dados) => request(`/ordens-servico/${id}`, { method: 'PUT', body: JSON.stringify(dados) }),
   alterarStatusOrdemServico: (id, status) => request(`/ordens-servico/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
+  fazerBackup: () => request('/api/backup', { method: 'POST' }),
+  statusBackup: () => request('/api/backup/status'),
+  ultimosErros: () => request('/api/logs/errors'),
+  consultarLogo: () => request('/api/logo'),
+  enviarLogo: (arquivo) => { const form = new FormData(); form.append('logo', arquivo); return requestForm('/api/logo', form); },
+  removerLogo: () => request('/api/logo', { method: 'DELETE' }),
 };

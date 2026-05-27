@@ -3,31 +3,49 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Oficina</title>
+    <title>Sistema de Gestão de Oficina</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div class="layout">
+    <div class="layout app-shell">
       <aside class="sidebar">
-        <div>
-          <div class="sidebar-logo"><h1>Oficina</h1><span>Sistema interno</span></div>
-          <nav class="sidebar-nav">
-            <button class="sidebar-btn active" data-secao="oficina">🔧 Oficina</button>
-            <button class="sidebar-btn" data-secao="clientes">👥 Lista de Clientes</button>
-            <button class="sidebar-btn" data-secao="pendentes">💰 Pendentes</button>
-            <button class="sidebar-btn" data-secao="financeiro">📊 Financeiro</button>
-            <button class="sidebar-btn" data-secao="config">⚙ Configurações</button>
+        <div class="sidebar-top">
+          <div class="sidebar-logo app-brand">
+            <div class="sidebar-logo-preview" id="sidebar-logo-preview" aria-hidden="true">
+              <span class="sidebar-logo-fallback" id="sidebar-logo-fallback">Oficina</span>
+            </div>
+            <div class="sidebar-brand-text">
+              <h1 id="sidebar-oficina-nome">Oficina</h1>
+              <span id="sidebar-oficina-subtitulo">Sistema local</span>
+            </div>
+          </div>
+          <nav class="sidebar-nav" aria-label="Navegação principal">
+            <button class="sidebar-btn active" data-secao="oficina"><span>🔧</span><strong>Oficina Hoje</strong></button>
+            <button class="sidebar-btn" data-secao="clientes"><span>👥</span><strong>Clientes</strong></button>
+            <button class="sidebar-btn" data-secao="pendentes"><span>💰</span><strong>Pendências</strong></button>
+            <button class="sidebar-btn" data-secao="financeiro"><span>📊</span><strong>Financeiro</strong></button>
+            <button class="sidebar-btn" data-secao="config"><span>⚙</span><strong>Config</strong></button>
           </nav>
         </div>
-        <div class="theme-switch-wrapper">
-          <span>Modo Claro</span>
-          <label class="theme-switch" for="checkbox"><input type="checkbox" id="checkbox" /><div class="slider round"></div></label>
+        <div class="sidebar-bottom">
+          <div class="theme-switch-wrapper">
+            <span>Modo Claro</span>
+            <label class="theme-switch" for="checkbox">
+              <input type="checkbox" id="checkbox" />
+              <div class="slider round"></div>
+            </label>
+          </div>
+          <div class="sidebar-footer">Oficina System v1</div>
         </div>
-        <div class="sidebar-footer">Oficina System v1</div>
       </aside>
 
       <div class="content-area">
         <section id="secao-oficina" class="secao-global active">
+          <div class="mobile-page-title">
+            <h1>Oficina Hoje</h1>
+            <p>Busca, serviço rápido e carros na oficina.</p>
+          </div>
+
           <header class="topbar vehicle-header" id="topbar">
             <div class="vehicle-header-main">
               <div class="plate-badge" id="headerPlaca">Nenhum veículo</div>
@@ -48,149 +66,239 @@
               </div>
             </div>
           </header>
-          <nav class="tabs">
+
+          <nav class="tabs page-tabs" aria-label="Fluxo da oficina">
             <button class="tab active" data-aba="buscar">Buscar</button>
             <button class="tab" data-aba="servico">Serviço</button>
             <button class="tab" data-aba="historico">Histórico</button>
             <button class="tab" data-aba="cadastro">Cadastro</button>
           </nav>
-          <main class="container">
+
+          <main class="container oficina-container">
             <section id="aba-buscar" class="aba active">
-              <div class="card"><h2>Buscar Veículo</h2><input type="text" id="buscar_placa" placeholder="Digite a placa" /><button id="btn-buscar-veiculo">Buscar Veículo</button></div>
-              <div class="card oficina-hoje-card">
-                <div class="section-title-row">
-                  <div>
-                    <h2>🚗 Oficina Hoje</h2>
-                    <p>Carros que estão com OS aberta. O serviço rápido continua funcionando normalmente.</p>
+              <div class="oficina-home-grid">
+                <div class="card search-card priority-card">
+                  <div class="eyebrow">Fluxo principal</div>
+                  <h2>Buscar por placa</h2>
+                  <p>Digite a placa para abrir o veículo. Se não existir, o sistema manda direto para o cadastro.</p>
+                  <div class="search-row">
+                    <input type="text" id="buscar_placa" placeholder="Ex: ABC1234" autocomplete="off" />
+                    <button id="btn-buscar-veiculo" class="salvar">Buscar</button>
                   </div>
-                  <button id="btn-recarregar-os" class="btn-secondary btn-inline">Atualizar</button>
+                  <small class="helper-text">Enter também busca. O serviço rápido continua sendo o caminho principal.</small>
                 </div>
-                <div id="oficina-hoje-resumo" class="oficina-resumo"></div>
-                <div id="lista-os-abertas" class="os-board"></div>
+
+                <div class="card oficina-hoje-card">
+                  <div class="section-title-row">
+                    <div>
+                      <div class="eyebrow">Operação opcional</div>
+                      <h2>Carros na oficina</h2>
+                      <p>OS abertas para carros que ficam aguardando aprovação, peça ou entrega.</p>
+                    </div>
+                    <button id="btn-recarregar-os" class="btn-secondary btn-inline">Atualizar</button>
+                  </div>
+                  <div id="oficina-hoje-resumo" class="oficina-resumo"></div>
+                  <div id="lista-os-abertas" class="os-board"></div>
+                </div>
               </div>
             </section>
+
             <section id="aba-servico" class="aba">
-              <div class="card service-card">
-                <div class="section-title-row">
-                  <div>
-                    <h2>Fechar Serviço</h2>
-                    <p>Monte o orçamento, registre peças e finalize o pagamento.</p>
-                  </div>
-                </div>
-                <div id="os-atual-banner" class="os-atual-banner hidden"></div>
-
-                <label class="field-label" for="servico">Serviço executado</label>
-                <textarea id="servico" rows="4" placeholder="Ex: Troca de óleo, revisão de freios..."></textarea>
-                <div class="quick-actions" id="botoes-atalho-container"></div>
-
-                <div class="service-km-card">
-                  <label for="km">Kilometragem Atual</label>
-                  <input type="number" id="km" placeholder="KM Atual" />
-                </div>
-
-                <h3>Peças Utilizadas</h3>
-                <div class="peca-form">
-                  <input type="text" id="peca_nome" placeholder="Nome da peça" />
-                  <input type="number" id="peca_valor" placeholder="Valor" step="0.01" />
-                </div>
-                <button id="btn-adicionar-peca" class="btn-secondary">Adicionar Peça</button>
-                <div id="lista_pecas"></div>
-
-                <div class="payment-panel">
-                  <div class="payment-panel-header">
-                    <div>
-                      <h3>Resumo financeiro</h3>
-                      <p>Informe mão de obra, pagamento recebido e forma de pagamento.</p>
-                    </div>
-                    <div class="payment-total-box">
-                      <small>Total Geral</small>
-                      <strong id="valor_total_display">R$ 0,00</strong>
-                    </div>
-                  </div>
-
-                  <div class="payment-grid">
-                    <div class="payment-field readonly-field">
-                      <label for="valor_pecas">Valor Peças</label>
-                      <input type="number" id="valor_pecas" readonly />
-                      <small id="valor_pecas_display">R$ 0,00</small>
-                    </div>
-                    <div class="payment-field">
-                      <label for="valor_maodeobra">Mão de obra</label>
-                      <input type="number" id="valor_maodeobra" placeholder="0,00" step="0.01" />
-                    </div>
-                    <div class="payment-field">
-                      <label for="valor_pago">Valor recebido agora</label>
-                      <input type="number" id="valor_pago" placeholder="0,00" step="0.01" />
-                    </div>
-                    <div class="payment-field payment-method-field">
-                      <label>Forma de pagamento</label>
-                      <input type="hidden" id="forma_pagamento" value="pendente" />
-                      <div class="payment-choice-grid" role="group" aria-label="Forma de pagamento">
-                        <button type="button" class="payment-choice active" data-pagamento="pendente">Pendente</button>
-                        <button type="button" class="payment-choice" data-pagamento="pix">Pix</button>
-                        <button type="button" class="payment-choice" data-pagamento="dinheiro">Dinheiro</button>
-                        <button type="button" class="payment-choice" data-pagamento="cartao">Cartão</button>
-                        <button type="button" class="payment-choice" data-pagamento="misto">Misto</button>
+              <div class="service-layout">
+                <div class="service-main-column">
+                  <div class="card service-card">
+                    <div class="section-title-row">
+                      <div>
+                        <div class="eyebrow">Serviço rápido</div>
+                        <h2>Registrar serviço</h2>
+                        <p>Preencha apenas o necessário para registrar o que foi feito e fechar no histórico.</p>
                       </div>
                     </div>
+                    <div id="os-atual-banner" class="os-atual-banner hidden"></div>
+
+                    <div class="form-block">
+                      <label class="field-label" for="servico">Serviço executado</label>
+                      <textarea id="servico" rows="4" placeholder="Ex: Troca de óleo, revisão de freios..."></textarea>
+                      <div class="quick-actions" id="botoes-atalho-container"></div>
+                    </div>
+
+                    <div class="form-block compact-block">
+                      <label class="field-label" for="km">Kilometragem Atual</label>
+                      <input type="number" id="km" placeholder="KM Atual" />
+                    </div>
+
+                    <div class="form-block parts-block">
+                      <div class="block-header">
+                        <div>
+                          <h3>Peças utilizadas</h3>
+                          <p>Adicione cada peça antes de gerar orçamento, PDF ou fechamento.</p>
+                        </div>
+                      </div>
+                      <div class="peca-form">
+                        <input type="text" id="peca_nome" placeholder="Nome da peça" />
+                        <input type="number" id="peca_valor" placeholder="Valor" step="0.01" />
+                        <button id="btn-adicionar-peca" class="btn-secondary">Adicionar</button>
+                      </div>
+                      <div id="lista_pecas"></div>
+                    </div>
                   </div>
-                  <div class="payment-balance-row">
-                    <div><span>Recebido agora</span><strong id="payment-recebido-display">R$ 0,00</strong></div>
-                    <div><span>Falta receber</span><strong id="payment-falta-display">R$ 0,00</strong></div>
-                  </div>
-                  <input type="number" id="valor_total" readonly hidden />
                 </div>
 
-                <div class="service-actions">
-                  <button id="btn-encaminhar-orcamento" class="btn-orcamento">Encaminhar Orçamento</button>
-                  <button id="btn-gerar-pdf" class="btn-secondary">Gerar PDF/Imprimir</button>
-                  <button id="btn-limpar-rascunho" class="btn-limpar">Limpar Orçamento</button>
-                  <button id="btn-salvar-os" class="btn-secondary">Manter na Oficina</button>
-                  <button id="btn-marcar-pronto" class="btn-secondary hidden">Marcar Pronto</button>
-                  <button id="btn-cancelar-os" class="btn-limpar hidden">Cancelar OS</button>
-                  <button id="btn-fechar-servico" class="salvar">Fechar Serviço</button>
-                  <button id="btn-gerar-whatsapp">WhatsApp Fechamento</button>
+                <aside class="service-side-column">
+                  <div class="payment-panel sticky-panel">
+                    <div class="payment-panel-header">
+                      <div>
+                        <div class="eyebrow">Resumo</div>
+                        <h3>Financeiro do serviço</h3>
+                        <p>Valores, recebimento e forma de pagamento.</p>
+                      </div>
+                      <div class="payment-total-box">
+                        <small>Total Geral</small>
+                        <strong id="valor_total_display">R$ 0,00</strong>
+                      </div>
+                    </div>
+
+                    <div class="payment-grid">
+                      <div class="payment-field readonly-field">
+                        <label for="valor_pecas">Valor Peças</label>
+                        <input type="number" id="valor_pecas" readonly />
+                        <small id="valor_pecas_display">R$ 0,00</small>
+                      </div>
+                      <div class="payment-field">
+                        <label for="valor_maodeobra">Mão de obra</label>
+                        <input type="number" id="valor_maodeobra" placeholder="0,00" step="0.01" />
+                      </div>
+                      <div class="payment-field">
+                        <label for="valor_pago">Valor recebido agora</label>
+                        <input type="number" id="valor_pago" placeholder="0,00" step="0.01" />
+                      </div>
+                      <div class="payment-field payment-method-field">
+                        <label>Forma de pagamento</label>
+                        <input type="hidden" id="forma_pagamento" value="pendente" />
+                        <div class="payment-choice-grid" role="group" aria-label="Forma de pagamento">
+                          <button type="button" class="payment-choice active" data-pagamento="pendente">Pendente</button>
+                          <button type="button" class="payment-choice" data-pagamento="pix">Pix</button>
+                          <button type="button" class="payment-choice" data-pagamento="dinheiro">Dinheiro</button>
+                          <button type="button" class="payment-choice" data-pagamento="cartao">Cartão</button>
+                          <button type="button" class="payment-choice" data-pagamento="misto">Misto</button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="payment-balance-row">
+                      <div><span>Recebido agora</span><strong id="payment-recebido-display">R$ 0,00</strong></div>
+                      <div><span>Falta receber</span><strong id="payment-falta-display">R$ 0,00</strong></div>
+                    </div>
+                    <input type="number" id="valor_total" readonly hidden />
+
+                    <div class="service-actions">
+                      <button id="btn-encaminhar-orcamento" class="btn-orcamento">Encaminhar Orçamento</button>
+                      <button id="btn-gerar-pdf" class="btn-secondary">Gerar PDF/Imprimir</button>
+                      <button id="btn-limpar-rascunho" class="btn-limpar">Limpar Orçamento</button>
+                      <button id="btn-salvar-os" class="btn-secondary">Manter na Oficina</button>
+                      <button id="btn-marcar-pronto" class="btn-secondary hidden">Marcar Pronto</button>
+                      <button id="btn-cancelar-os" class="btn-limpar hidden">Cancelar OS</button>
+                      <button id="btn-fechar-servico" class="salvar">Fechar Serviço</button>
+                      <button id="btn-gerar-whatsapp">WhatsApp Fechamento</button>
+                    </div>
+                  </div>
+                </aside>
+              </div>
+            </section>
+
+            <section id="aba-historico" class="aba">
+              <div class="card history-card">
+                <div class="section-title-row">
+                  <div>
+                    <div class="eyebrow">Memória técnica</div>
+                    <h2>Histórico do veículo</h2>
+                    <p>Somente serviços finalizados entram aqui.</p>
+                  </div>
+                </div>
+                <div id="historico"></div>
+              </div>
+            </section>
+
+            <section id="aba-cadastro" class="aba">
+              <div class="cadastro-grid">
+                <div class="card cadastro-card">
+                  <div class="section-title-row"><div><div class="eyebrow">Cliente</div><h2>Dados do cliente</h2></div></div>
+                  <label class="field-label" for="nome_cliente">Nome</label>
+                  <input type="text" id="nome_cliente" placeholder="Cliente" />
+                  <div class="phone-grid phone-grid-split">
+                    <div><label class="field-label" for="ddi_cliente">DDI</label><input type="text" id="ddi_cliente" value="55" placeholder="55" inputmode="numeric" /></div>
+                    <div><label class="field-label" for="ddd_cliente">DDD</label><input type="text" id="ddd_cliente" value="54" placeholder="54" inputmode="numeric" /></div>
+                    <div><label class="field-label" for="tel_cliente">Telefone / WhatsApp</label><input type="text" id="tel_cliente" placeholder="Ex: 999172308" inputmode="numeric" /></div>
+                  </div>
+                </div>
+
+                <div class="card cadastro-card">
+                  <div class="section-title-row"><div><div class="eyebrow">Veículo</div><h2>Dados do carro</h2></div></div>
+                  <label class="field-label" for="placa">Placa</label>
+                  <input type="text" id="placa" placeholder="Placa" />
+                  <div class="vehicle-form-grid">
+                    <div><label class="field-label" for="modelo">Modelo</label><input type="text" id="modelo" placeholder="Modelo" /></div>
+                    <div><label class="field-label" for="cor">Cor</label><input type="text" id="cor" placeholder="Cor" /></div>
+                    <div><label class="field-label" for="ano">Ano</label><input type="number" id="ano" placeholder="Ano" /></div>
+                  </div>
+                </div>
+
+                <div class="card cadastro-card full-width-card">
+                  <div class="section-title-row"><div><div class="eyebrow">Técnico</div><h2>Observações fixas</h2><p>Informações úteis que devem aparecer sempre que esse veículo for aberto.</p></div></div>
+                  <textarea id="perfil" rows="4" placeholder="Perfil técnico / observações fixas"></textarea>
+                  <div id="perfilAlerta"></div>
+                  <div class="form-actions-row">
+                    <button class="salvar" id="btn-salvar-cadastro">Salvar Cadastro</button>
+                  </div>
                 </div>
               </div>
             </section>
-            <section id="aba-historico" class="aba"><div class="card"><h2>Histórico</h2><div id="historico"></div></div></section>
-            <section id="aba-cadastro" class="aba"><div class="card"><h2>Cadastro Veículo</h2><input type="text" id="placa" placeholder="Placa" /><input type="text" id="nome_cliente" placeholder="Cliente" /><div style="display:flex;gap:8px;margin-bottom:12px"><input type="text" id="ddd_cliente" value="54" style="width:70px;text-align:center" placeholder="DDD" /><input type="text" id="tel_cliente" placeholder="Telefone (ex: 999172308)" style="flex:1" /></div><input type="text" id="modelo" placeholder="Modelo" /><input type="text" id="cor" placeholder="Cor" /><input type="number" id="ano" placeholder="Ano" /><textarea id="perfil" rows="4" placeholder="Perfil técnico"></textarea><div id="perfilAlerta"></div><button class="salvar" id="btn-salvar-cadastro">Salvar Cadastro</button></div></section>
           </main>
         </section>
 
-        <section id="secao-clientes" class="secao-global"><div class="container"><div class="card"><h2>Lista de Clientes</h2><input type="text" id="busca_cliente" placeholder="Buscar cliente..." /><div class="tabela-wrapper"><table class="clientes-table"><thead><tr><th data-sort="nome_cliente" style="cursor:pointer">Cliente ↕</th><th>Placa</th><th>Modelo</th><th data-sort="cor" style="cursor:pointer">Cor ↕</th><th data-sort="ano" style="cursor:pointer">Ano ↕</th><th data-sort="km_atual" style="cursor:pointer">KM ↕</th><th data-sort="data_ultimo_servico" style="cursor:pointer">Última Visita ↕</th><th>Perfil</th><th>Telefone</th></tr></thead><tbody id="lista-clientes"></tbody></table></div></div></div></section>
-        <section id="secao-pendentes" class="secao-global"><div class="container"><div class="card"><h2>Pagamentos Pendentes</h2><div id="lista-pendentes"></div></div></div></section>
-        <section id="secao-config" class="secao-global">
-          <div class="container">
-            <div class="card config-card">
-              <div class="section-title-row">
-                <div>
-                  <h2>Configurações da Oficina</h2>
-                  <p>Essas informações aparecem na Ordem de Serviço em PDF.</p>
-                </div>
-              </div>
-              <div class="config-grid">
-                <div class="config-field"><label for="config-oficina-nome">Nome da oficina</label><input type="text" id="config-oficina-nome" placeholder="Ex: MC RACING" /></div>
-                <div class="config-field"><label for="config-oficina-subtitulo">Descrição</label><input type="text" id="config-oficina-subtitulo" placeholder="Ex: Mecânica Multimarcas" /></div>
-                <div class="config-field"><label for="config-oficina-telefone">Telefone</label><input type="text" id="config-oficina-telefone" placeholder="(54) 99999-9999" /></div>
-                <div class="config-field"><label for="config-oficina-cnpj">CNPJ</label><input type="text" id="config-oficina-cnpj" placeholder="00.000.000/0000-00" /></div>
-                <div class="config-field"><label for="config-oficina-rua">Rua / Endereço</label><input type="text" id="config-oficina-rua" placeholder="Rua e número" /></div>
-                <div class="config-field"><label for="config-oficina-bairro">Bairro</label><input type="text" id="config-oficina-bairro" placeholder="Bairro" /></div>
-                <div class="config-field"><label for="config-oficina-cidade">Cidade / UF</label><input type="text" id="config-oficina-cidade" placeholder="Caxias do Sul - RS" /></div>
-                <div class="config-field"><label for="config-oficina-cep">CEP</label><input type="text" id="config-oficina-cep" placeholder="00000-000" /></div>
-              </div>
-              <div class="config-actions">
-                <button id="btn-salvar-config-oficina" class="salvar">Salvar informações</button>
-                <small id="config-oficina-status">As configurações ficam salvas neste computador.</small>
+        <section id="secao-clientes" class="secao-global">
+          <div class="container section-container">
+            <div class="section-hero compact-hero">
+              <div><div class="eyebrow">Consulta rápida</div><h2>Clientes e veículos</h2><p>Busque por nome, placa, modelo, telefone, cor ou ano.</p></div>
+              <input type="text" id="busca_cliente" placeholder="Buscar cliente, placa, telefone ou modelo..." />
+            </div>
+            <div class="card table-card">
+              <div class="tabela-wrapper clientes-responsive-wrapper">
+                <table class="clientes-table">
+                  <thead>
+                    <tr>
+                      <th data-sort="nome_cliente">Cliente ↕</th>
+                      <th>Placa</th>
+                      <th>Modelo</th>
+                      <th data-sort="cor">Cor ↕</th>
+                      <th data-sort="ano">Ano ↕</th>
+                      <th data-sort="km_atual">KM ↕</th>
+                      <th data-sort="data_ultimo_servico">Última Visita ↕</th>
+                      <th>Perfil</th>
+                      <th>Telefone</th>
+                    </tr>
+                  </thead>
+                  <tbody id="lista-clientes"></tbody>
+                </table>
               </div>
             </div>
           </div>
         </section>
+
+        <section id="secao-pendentes" class="secao-global">
+          <div class="container section-container">
+            <div class="section-hero compact-hero">
+              <div><div class="eyebrow">Cobrança</div><h2>Pagamentos pendentes</h2><p>Veja quem falta pagar, de qual carro e registre recebimentos parciais ou totais.</p></div>
+            </div>
+            <div id="lista-pendentes" class="pendencias-grid"></div>
+          </div>
+        </section>
+
         <section id="secao-financeiro" class="secao-global">
           <div class="container finance-dashboard desktop-finance">
-            <div class="finance-page-header">
+            <div class="finance-page-header section-hero">
               <div>
-                <small>Financeiro da oficina</small>
+                <div class="eyebrow">Financeiro</div>
                 <h2>Dashboard de ganhos</h2>
                 <p>Visão clara de faturamento, recebimentos, OS e métodos de pagamento.</p>
               </div>
@@ -202,70 +310,86 @@
             </div>
 
             <section class="finance-kpi-grid">
-              <article class="kpi-card primary">
-                <span id="finance-periodo-label">Semana atual</span>
-                <strong id="dash-recebido">R$ 0,00</strong>
-                <small>Total recebido</small>
-              </article>
-              <article class="kpi-card">
-                <span>Faturamento</span>
-                <strong id="dash-faturamento">R$ 0,00</strong>
-                <small>Valor total das OS</small>
-              </article>
-              <article class="kpi-card">
-                <span>Pendente</span>
-                <strong id="dash-pendente">R$ 0,00</strong>
-                <small id="dash-pendente-percent">0% em aberto</small>
-              </article>
-              <article class="kpi-card">
-                <span>OS fechadas</span>
-                <strong id="dash-servicos">0</strong>
-                <small id="dash-ticket-medio">Ticket médio R$ 0,00</small>
-              </article>
+              <article class="kpi-card primary"><span id="finance-periodo-label">Semana atual</span><strong id="dash-recebido">R$ 0,00</strong><small>Total recebido</small></article>
+              <article class="kpi-card"><span>Faturamento</span><strong id="dash-faturamento">R$ 0,00</strong><small>Valor total das OS</small></article>
+              <article class="kpi-card"><span>Pendente</span><strong id="dash-pendente">R$ 0,00</strong><small id="dash-pendente-percent">0% em aberto</small></article>
+              <article class="kpi-card"><span>OS fechadas</span><strong id="dash-servicos">0</strong><small id="dash-ticket-medio">Ticket médio R$ 0,00</small></article>
             </section>
 
             <section class="finance-main-grid">
-              <article class="finance-card finance-performance-card">
-                <div class="card-title-row">
-                  <div>
-                    <h3 id="finance-performance-title">Desempenho semanal</h3>
-                    <p id="finance-performance-subtitle">Quanto entrou em cada dia da semana.</p>
-                  </div>
-                  <strong id="finance-best-label">Melhor período: —</strong>
-                </div>
-                <div id="finance-performance-content" class="desktop-bars"></div>
-              </article>
-
-              <article class="finance-card payment-summary-card">
-                <div class="card-title-row compact">
-                  <div>
-                    <h3>Recebido por método</h3>
-                    <p>Dinheiro, Pix e maquininha/cartão.</p>
-                  </div>
-                </div>
-                <div class="payment-method-grid">
-                  <div class="payment-method money"><span>Dinheiro</span><strong id="dash-dinheiro">R$ 0,00</strong></div>
-                  <div class="payment-method pix"><span>Pix</span><strong id="dash-pix-detail">R$ 0,00</strong></div>
-                  <div class="payment-method card"><span>Cartão/Máquina</span><strong id="dash-cartao-detail">R$ 0,00</strong></div>
-                </div>
-                <div id="finance-payment-bars" class="payment-bars desktop"></div>
-              </article>
+              <article class="finance-card finance-performance-card"><div class="card-title-row"><div><h3 id="finance-performance-title">Desempenho semanal</h3><p id="finance-performance-subtitle">Quanto entrou em cada dia da semana.</p></div><strong id="finance-best-label">Melhor período: —</strong></div><div id="finance-performance-content" class="desktop-bars"></div></article>
+              <article class="finance-card payment-summary-card"><div class="card-title-row compact"><div><h3>Recebido por método</h3><p>Dinheiro, Pix e maquininha/cartão.</p></div></div><div class="payment-method-grid"><div class="payment-method money"><span>Dinheiro</span><strong id="dash-dinheiro">R$ 0,00</strong></div><div class="payment-method pix"><span>Pix</span><strong id="dash-pix-detail">R$ 0,00</strong></div><div class="payment-method card"><span>Cartão/Máquina</span><strong id="dash-cartao-detail">R$ 0,00</strong></div></div><div id="finance-payment-bars" class="payment-bars desktop"></div></article>
             </section>
 
             <section class="finance-bottom-grid">
-              <article class="finance-card details-card">
-                <h3>Detalhamento do período</h3>
-                <div class="detail-row"><span>Total recebido</span><strong id="dash-recebido-detail">R$ 0,00</strong></div>
-                <div class="detail-row"><span>Total em dinheiro</span><strong id="dash-dinheiro-detail">R$ 0,00</strong></div>
-                <div class="detail-row"><span>Total digital</span><strong id="dash-digital">R$ 0,00</strong></div>
-                <div class="detail-row"><span>Total pendente</span><strong id="dash-pendente-detail">R$ 0,00</strong></div>
-              </article>
-
-              <article class="finance-card insight-card">
-                <h3>Leitura rápida</h3>
-                <div id="finance-insights" class="finance-insights"></div>
-              </article>
+              <article class="finance-card details-card"><h3>Detalhamento do período</h3><div class="detail-row"><span>Total recebido</span><strong id="dash-recebido-detail">R$ 0,00</strong></div><div class="detail-row"><span>Total em dinheiro</span><strong id="dash-dinheiro-detail">R$ 0,00</strong></div><div class="detail-row"><span>Total digital</span><strong id="dash-digital">R$ 0,00</strong></div><div class="detail-row"><span>Total pendente</span><strong id="dash-pendente-detail">R$ 0,00</strong></div></article>
+              <article class="finance-card insight-card"><h3>Leitura rápida</h3><div id="finance-insights" class="finance-insights"></div></article>
             </section>
+          </div>
+        </section>
+
+        <section id="secao-config" class="secao-global">
+          <div class="container section-container config-page">
+            <div class="section-hero compact-hero">
+              <div><div class="eyebrow">Manutenção</div><h2>Configurações</h2><p>Dados da oficina, backup, logs e informações locais do sistema.</p></div>
+            </div>
+
+            <div class="settings-grid">
+              <div class="card config-card settings-panel wide-panel">
+                <div class="section-title-row"><div><h3>Dados da oficina</h3><p>Essas informações aparecem na Ordem de Serviço em PDF.</p></div></div>
+                <div class="config-grid">
+                  <div class="config-field"><label for="config-oficina-nome">Nome da oficina</label><input type="text" id="config-oficina-nome" placeholder="Ex: MC RACING" /></div>
+                  <div class="config-field"><label for="config-oficina-subtitulo">Descrição</label><input type="text" id="config-oficina-subtitulo" placeholder="Ex: Mecânica Multimarcas" /></div>
+                  <div class="config-field"><label for="config-oficina-telefone">Telefone</label><input type="text" id="config-oficina-telefone" placeholder="(54) 99999-9999" /></div>
+                  <div class="config-field"><label for="config-oficina-cnpj">CNPJ</label><input type="text" id="config-oficina-cnpj" placeholder="00.000.000/0000-00" /></div>
+                  <div class="config-field"><label for="config-oficina-rua">Rua / Endereço</label><input type="text" id="config-oficina-rua" placeholder="Rua e número" /></div>
+                  <div class="config-field"><label for="config-oficina-bairro">Bairro</label><input type="text" id="config-oficina-bairro" placeholder="Bairro" /></div>
+                  <div class="config-field"><label for="config-oficina-cidade">Cidade / UF</label><input type="text" id="config-oficina-cidade" placeholder="Caxias do Sul - RS" /></div>
+                  <div class="config-field"><label for="config-oficina-cep">CEP</label><input type="text" id="config-oficina-cep" placeholder="00000-000" /></div>
+                  <div class="config-field config-field-full"><label for="config-oficina-servicos">Serviços exibidos no cabeçalho da OS</label><textarea id="config-oficina-servicos" rows="5" placeholder="Uma linha por serviço:&#10;Injeção Eletrônica&#10;Revisão de freios&#10;Suspensão"></textarea></div>
+                </div>
+
+                <div class="logo-config-box">
+                  <div class="section-title-row compact"><div><h3>Logo da oficina</h3><p>PNG, JPG/JPEG ou WEBP até 2MB. A logo aparece na sidebar e na OS impressa.</p></div></div>
+                  <div class="logo-config-content">
+                    <div class="logo-preview-card" id="config-logo-preview"><span>Sem logo</span></div>
+                    <div class="logo-actions">
+                      <input type="file" id="config-logo-input" accept="image/png,image/jpeg,image/webp" />
+                      <div class="logo-actions-row">
+                        <button id="btn-enviar-logo" class="btn-secondary" type="button">Enviar logo</button>
+                        <button id="btn-remover-logo" class="btn-cancelar" type="button">Remover logo</button>
+                      </div>
+                      <small id="config-logo-status">Se nenhuma logo for enviada, a OS usa o nome da oficina como fallback.</small>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="config-actions"><button id="btn-salvar-config-oficina" class="salvar">Salvar informações</button><small id="config-oficina-status">As configurações ficam salvas neste computador.</small></div>
+              </div>
+
+              <div class="card settings-panel">
+                <div class="section-title-row compact"><div><h3>Backup local</h3><p>Salve uma cópia do banco antes de usar em produção e no fim do expediente.</p></div></div>
+                <div class="backup-status-grid">
+                  <div class="backup-status-box"><span>Último backup</span><strong id="backup-ultimo">Nenhum backup encontrado</strong><small id="backup-pasta">Pasta: backups/</small></div>
+                  <button id="btn-fazer-backup" class="btn-secondary">Fazer backup agora</button>
+                </div>
+                <div class="restore-help"><strong>Restauração manual:</strong><span>feche o app, copie um arquivo de <code>backups/</code>, renomeie para <code>oficina.db</code> e abra o app novamente.</span></div>
+              </div>
+
+              <div class="card settings-panel">
+                <div class="section-title-row compact"><div><h3>Últimos erros</h3><p>Diagnóstico rápido sem depender só do console.</p></div></div>
+                <div id="lista-ultimos-erros" class="logs-list">Nenhum erro carregado ainda.</div>
+              </div>
+
+              <div class="card settings-panel about-panel">
+                <div class="section-title-row compact"><div><h3>Sobre esta instalação</h3><p>App local para uso no notebook e acesso opcional pela rede local.</p></div></div>
+                <ul class="simple-list">
+                  <li>Não coloque <code>oficina.db</code>, <code>logs/</code> ou <code>backups/</code> no GitHub.</li>
+                  <li>Use apenas em rede local. Não exponha a porta na internet.</li>
+                  <li>Para acessar pelo celular, use o IP do notebook na mesma rede.</li>
+                </ul>
+              </div>
+            </div>
           </div>
         </section>
       </div>

@@ -30,6 +30,7 @@ function carregarConfigOficina() {
     bairro: '',
     cidade: 'Caxias do Sul',
     cep: '',
+    servicosCabecalho: 'Mecânica geral\nRevisões\nFreios\nSuspensão\nInjeção eletrônica',
   };
 
   try {
@@ -61,4 +62,5 @@ export const state = {
   ordensAbertas: [],
   acaoAposAlertaPeca: null,
   configOficina: carregarConfigOficina(),
+  logoOficina: { exists: false, url: null },
 };

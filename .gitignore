@@ -1,4 +1,36 @@
-node_modules
+node_modules/
+
+# Banco real e derivados
 *.db
-.prettierrc
-.prettierignore
+*.sqlite
+*.sqlite3
+
+# Backups e logs
+backups/
+logs/
+*.log
+
+# PDFs/arquivos gerados
+*.pdf
+
+# Ambiente
+.env
+.env.local
+
+# Sistema/editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Logos/uploads locais
+uploads/*
+!uploads/.gitkeep
+# Derivados do SQLite
+*.db-wal
+*.db-shm
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3-wal
+*.sqlite3-shm
+# Git local exportado por engano
+.git/
