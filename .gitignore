@@ -2,6 +2,8 @@ node_modules/
 
 # Banco real e derivados
 *.db
+*.db-wal
+*.db-shm
 *.sqlite
 *.sqlite3
 
@@ -25,12 +27,3 @@ Thumbs.db
 # Logos/uploads locais
 uploads/*
 !uploads/.gitkeep
-# Derivados do SQLite
-*.db-wal
-*.db-shm
-*.sqlite-wal
-*.sqlite-shm
-*.sqlite3-wal
-*.sqlite3-shm
-# Git local exportado por engano
-.git/

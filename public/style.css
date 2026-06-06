@@ -4197,3 +4197,437 @@ button {
     display: none;
   }
 }
+
+/* =========================
+   Sprint 1 - UI Notebook + Densidade + Combustível
+   Escopo: ajustes responsivos e de legibilidade, sem redesign.
+========================= */
+:root {
+  --space-1: 6px;
+  --space-2: 10px;
+  --space-3: 14px;
+  --space-4: 18px;
+  --panel-padding: 18px;
+  --card-radius: 18px;
+  --input-height: 44px;
+  --font-base: 16px;
+  --sidebar-width: 240px;
+}
+
+body[data-ui-density='compact'] {
+  --space-1: 5px;
+  --space-2: 8px;
+  --space-3: 11px;
+  --space-4: 14px;
+  --panel-padding: 14px;
+  --card-radius: 15px;
+  --input-height: 40px;
+  --font-base: 15px;
+  --sidebar-width: 212px;
+}
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-size: var(--font-base);
+}
+
+.layout.app-shell {
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  min-width: 0;
+}
+
+.content-area,
+.secao-global,
+.container,
+.section-container,
+.card,
+.service-layout,
+.service-main-column,
+.service-side-column,
+.oficina-home-grid,
+.cadastro-grid,
+.settings-grid,
+.finance-dashboard,
+.dashboard-grid,
+.finance-method-grid,
+.os-board,
+.lista-pendentes-grid {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.card,
+.settings-panel,
+.service-card,
+.payment-panel,
+.table-card,
+.cadastro-card {
+  border-radius: var(--card-radius);
+  padding: var(--panel-padding);
+}
+
+input,
+textarea,
+select,
+button {
+  min-width: 0;
+  max-width: 100%;
+}
+
+input,
+select {
+  min-height: var(--input-height);
+}
+
+select {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-top: 10px;
+  background: var(--bg-input);
+  color: var(--text-main);
+  font-size: 0.95rem;
+}
+
+.sidebar {
+  width: var(--sidebar-width);
+  padding: var(--space-4) var(--space-3);
+}
+
+.sidebar-nav {
+  gap: var(--space-2);
+}
+
+.sidebar-btn {
+  min-height: calc(var(--input-height) + 6px);
+  padding: 12px 14px;
+  gap: 10px;
+}
+
+body[data-ui-density='compact'] .sidebar-btn {
+  min-height: 44px;
+  padding: 10px 12px;
+  font-size: 0.93rem;
+}
+
+.topbar.vehicle-header {
+  padding: var(--space-3) var(--space-4);
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.vehicle-header-main,
+.vehicle-header-owner {
+  min-width: 0;
+}
+
+.vehicle-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.vehicle-meta-row span {
+  white-space: nowrap;
+}
+
+body[data-ui-density='compact'] .plate-badge {
+  transform: scale(.96);
+  transform-origin: left center;
+}
+
+.page-tabs.tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.page-tabs .tab {
+  min-width: 0;
+  padding-inline: 8px;
+}
+
+.oficina-home-grid,
+.service-layout,
+.settings-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.72fr);
+  gap: var(--space-4);
+}
+
+.service-side-column,
+.payment-panel {
+  min-width: 0;
+}
+
+.vehicle-form-grid {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.config-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.density-config-box {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--bg-item) 72%, transparent);
+}
+
+.density-options {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0 8px;
+}
+
+.density-choice {
+  width: auto;
+  min-width: 118px;
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-input);
+  color: var(--text-main);
+  border-radius: 999px;
+}
+
+.density-choice.active {
+  background: var(--accent-primary) !important;
+  color: #06120a !important;
+  border-color: color-mix(in srgb, var(--accent-primary) 70%, white);
+}
+
+.table-scroll,
+.tabela-wrapper,
+.clientes-responsive-wrapper {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.clientes-table {
+  min-width: 880px;
+}
+
+@media (max-width: 1366px), (max-height: 760px) {
+  body[data-ui-density-preference='auto'] {
+    --space-1: 5px;
+    --space-2: 8px;
+    --space-3: 11px;
+    --space-4: 14px;
+    --panel-padding: 14px;
+    --card-radius: 15px;
+    --input-height: 40px;
+    --font-base: 15px;
+    --sidebar-width: 212px;
+  }
+
+  .layout.app-shell {
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  }
+
+  .sidebar-logo-preview {
+    min-height: 54px;
+  }
+
+  .sidebar-logo-img {
+    max-height: 52px;
+  }
+
+  .oficina-home-grid,
+  .service-layout {
+    grid-template-columns: minmax(0, 1.1fr) minmax(280px, .75fr);
+  }
+
+  .section-hero,
+  .compact-hero {
+    padding-block: 12px;
+  }
+}
+
+@media (max-width: 1180px), (max-height: 720px) {
+  .oficina-home-grid,
+  .service-layout,
+  .settings-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .payment-panel {
+    position: static !important;
+  }
+
+  .topbar.vehicle-header {
+    align-items: flex-start;
+  }
+
+  .vehicle-header-owner {
+    width: 100%;
+    justify-content: space-between;
+    flex-direction: row;
+  }
+}
+
+@media (max-width: 760px) {
+  .layout.app-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .page-tabs.tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .vehicle-header-main,
+  .vehicle-header-owner,
+  .header-phone {
+    width: 100%;
+  }
+
+  .vehicle-header-owner,
+  .header-phone {
+    align-items: flex-start;
+  }
+
+  .density-options,
+  .density-choice {
+    width: 100%;
+  }
+
+  .clientes-table {
+    min-width: 0;
+  }
+}
+
+
+/* =====================================================
+   PATCH Sprint 1.1 — mobile nav, combustível e edição de peças
+   Escopo: correções pontuais sem redesenhar telas existentes.
+===================================================== */
+.peca-item {
+  gap: 10px;
+}
+
+.peca-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.peca-actions button {
+  margin: 0 !important;
+  width: auto !important;
+  min-width: 34px !important;
+  max-width: none !important;
+  height: 30px !important;
+  padding: 0 10px !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
+}
+
+.peca-edit-btn {
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 60%, var(--border-color)) !important;
+  color: var(--accent-primary) !important;
+  background: color-mix(in srgb, var(--accent-primary) 10%, transparent) !important;
+}
+
+.peca-remove-btn {
+  border: 1px solid #ff4d4d !important;
+  color: #ff4d4d !important;
+  background: transparent !important;
+}
+
+#btn-adicionar-peca.editing-piece {
+  background: var(--accent-primary) !important;
+  color: #06120a !important;
+}
+
+@media (max-width: 900px) {
+  body {
+    padding-bottom: 86px;
+  }
+
+  .sidebar {
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    height: 76px !important;
+    padding: 7px 8px !important;
+  }
+
+  .sidebar-nav {
+    width: 100%;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 5px !important;
+  }
+
+  .sidebar-btn {
+    min-width: 0 !important;
+    min-height: 60px !important;
+    height: 60px !important;
+    padding: 6px 3px !important;
+    gap: 3px !important;
+    overflow: hidden;
+  }
+
+  .sidebar-btn span {
+    width: auto !important;
+    min-width: 0 !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+  }
+
+  .sidebar-btn strong {
+    max-width: 100%;
+    font-size: 9.5px !important;
+    line-height: 1.05 !important;
+    white-space: normal;
+    overflow: hidden;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+  }
+
+  .topbar.vehicle-header:not(.active) {
+    display: none;
+  }
+
+  .topbar.vehicle-header {
+    max-width: calc(100vw - 28px);
+  }
+
+  .vehicle-header-main {
+    padding: 14px !important;
+  }
+
+  .oficina-home-grid,
+  .service-layout,
+  .settings-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .peca-item {
+    align-items: flex-start;
+  }
+
+  .peca-actions {
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 430px) {
+  .sidebar-btn strong {
+    font-size: 8.8px !important;
+  }
+
+  .sidebar-btn span {
+    font-size: 17px !important;
+  }
+}

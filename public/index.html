@@ -55,6 +55,7 @@
                   <span id="headerAno">Ano: ---</span>
                   <span id="headerCor">Cor: ---</span>
                   <span id="headerKm">KM: ---</span>
+                  <span id="headerCombustivel">Combustível: ---</span>
                 </div>
               </div>
             </div>
@@ -240,6 +241,17 @@
                     <div><label class="field-label" for="modelo">Modelo</label><input type="text" id="modelo" placeholder="Modelo" /></div>
                     <div><label class="field-label" for="cor">Cor</label><input type="text" id="cor" placeholder="Cor" /></div>
                     <div><label class="field-label" for="ano">Ano</label><input type="number" id="ano" placeholder="Ano" /></div>
+                    <div><label class="field-label" for="combustivel">Combustível</label><select id="combustivel">
+                      <option value="Não informado">Não informado</option>
+                      <option value="Flex">Flex</option>
+                      <option value="Gasolina">Gasolina</option>
+                      <option value="Etanol/Álcool">Etanol/Álcool</option>
+                      <option value="Diesel">Diesel</option>
+                      <option value="GNV">GNV</option>
+                      <option value="Elétrico">Elétrico</option>
+                      <option value="Híbrido">Híbrido</option>
+                      <option value="Outro">Outro</option>
+                    </select></div>
                   </div>
                 </div>
 
@@ -271,6 +283,7 @@
                       <th>Placa</th>
                       <th>Modelo</th>
                       <th data-sort="cor">Cor ↕</th>
+                      <th data-sort="combustivel">Combustível ↕</th>
                       <th data-sort="ano">Ano ↕</th>
                       <th data-sort="km_atual">KM ↕</th>
                       <th data-sort="data_ultimo_servico">Última Visita ↕</th>
@@ -362,6 +375,16 @@
                       <small id="config-logo-status">Se nenhuma logo for enviada, a OS usa o nome da oficina como fallback.</small>
                     </div>
                   </div>
+                </div>
+
+                <div class="density-config-box">
+                  <div class="section-title-row compact"><div><h3>Densidade da interface</h3><p>Ajuste o espaçamento para notebook sem deixar a fonte pequena demais.</p></div></div>
+                  <div class="density-options" role="group" aria-label="Densidade da interface">
+                    <button type="button" class="density-choice" data-density="auto">Auto</button>
+                    <button type="button" class="density-choice" data-density="comfortable">Confortável</button>
+                    <button type="button" class="density-choice" data-density="compact">Compacta</button>
+                  </div>
+                  <small class="helper-text">No modo Auto, a interface fica mais compacta em telas abaixo de 1366px de largura ou 760px de altura.</small>
                 </div>
 
                 <div class="config-actions"><button id="btn-salvar-config-oficina" class="salvar">Salvar informações</button><small id="config-oficina-status">As configurações ficam salvas neste computador.</small></div>

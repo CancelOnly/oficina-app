@@ -49,6 +49,7 @@ function carregarConfigOficina() {
 export const state = {
   veiculoAtual: null,
   listaPecas: [],
+  editandoPecaIndex: null,
   clientesCache: [],
   colunaAtual: '',
   ordemCrescente: true,

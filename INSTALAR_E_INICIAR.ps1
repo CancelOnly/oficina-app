@@ -8,9 +8,6 @@ Write-Host ""
 
 Set-Location $PSScriptRoot
 
-if (-not $env:HOST) { $env:HOST = "0.0.0.0" }
-if (-not $env:PORT) { $env:PORT = "3001" }
-
 function Test-Command($cmd) {
     $null -ne (Get-Command $cmd -ErrorAction SilentlyContinue)
 }
@@ -55,14 +52,19 @@ Write-Host "npm encontrado:"
 npm -v
 Write-Host ""
 
-Write-Host "Instalando/verificando dependencias..."
-Write-Host "Isso pode demorar na primeira execucao."
-Write-Host ""
-npm install
+if (-not (Test-Path ".\node_modules")) {
+    Write-Host "Instalando dependencias..."
+    Write-Host "Isso pode demorar na primeira execucao."
+    Write-Host ""
+
+    npm install
+} else {
+    Write-Host "Dependencias ja instaladas."
+}
 
 Write-Host ""
 Write-Host "Abrindo sistema no navegador..."
-Start-Process "http://localhost:$env:PORT"
+Start-Process "http://localhost:3000"
 
 Write-Host ""
 Write-Host "Servidor iniciado."

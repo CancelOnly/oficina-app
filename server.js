@@ -170,6 +170,7 @@ db.serialize(() => {
       telefone_numero TEXT DEFAULT '',
       modelo TEXT,
       cor TEXT,
+      combustivel TEXT DEFAULT 'Não informado',
       ano INTEGER,
       perfil_tecnico TEXT,
       km_atual INTEGER DEFAULT 0
@@ -189,6 +190,7 @@ db.serialize(() => {
   }
 
   addVeiculoColumn('cor', 'TEXT');
+  addVeiculoColumn('combustivel', "TEXT DEFAULT 'Não informado'");
   addVeiculoColumn('km_atual', 'INTEGER DEFAULT 0');
   addVeiculoColumn('ddi_cliente', "TEXT DEFAULT '55'");
   addVeiculoColumn('ddd_cliente', "TEXT DEFAULT '54'");
@@ -202,6 +204,13 @@ db.serialize(() => {
       telefone_numero = COALESCE(telefone_numero, '')
   `, (err) => {
     if (err) logError('Erro ao normalizar telefones', { err: err.message });
+  });
+
+  db.run(`
+    UPDATE veiculos
+    SET combustivel = COALESCE(NULLIF(combustivel, ''), 'Não informado')
+  `, (err) => {
+    if (err) logError('Erro ao normalizar combustível', { err: err.message });
   });
 
   db.all(`SELECT id, telefone_cliente, ddi_cliente, ddd_cliente, telefone_numero FROM veiculos WHERE COALESCE(telefone_numero, '') = '' AND COALESCE(telefone_cliente, '') != ''`, [], (err, rows = []) => {
@@ -348,8 +357,11 @@ app.get('/api/logo/image', (req, res) => {
 app.post('/api/logo', (req, res) => {
   uploadLogo.single('logo')(req, res, (err) => {
     if (err) {
-      logError('Erro ao enviar logo', { err: err.message });
-      return res.status(400).json({ erro: err.message });
+      const mensagem = err.code === 'LIMIT_FILE_SIZE'
+        ? 'A logo deve ter no máximo 2MB.'
+        : err.message;
+      logError('Erro ao enviar logo', { err: mensagem });
+      return res.status(400).json({ erro: mensagem });
     }
     try {
       if (!req.file) return res.status(400).json({ erro: 'Arquivo de logo não enviado' });
@@ -408,7 +420,7 @@ app.get('/veiculos', async (req, res) => {
 
 app.post('/veiculo', async (req, res) => {
   try {
-    const { nome_cliente, telefone_cliente, modelo, cor, ano, perfil_tecnico } = req.body;
+    const { nome_cliente, telefone_cliente, modelo, cor, combustivel, ano, perfil_tecnico } = req.body;
     const placaLimpa = limparPlaca(req.body.placa);
     if (!placaLimpa) return res.status(400).json({ erro: 'Placa obrigatória' });
 
@@ -427,8 +439,8 @@ app.post('/veiculo', async (req, res) => {
 
     const existente = await getAsync(`SELECT id FROM veiculos WHERE placa = ?`, [placaLimpa]);
     await runAsync(
-      `INSERT INTO veiculos (placa, nome_cliente, telefone_cliente, ddi_cliente, ddd_cliente, telefone_numero, modelo, cor, ano, perfil_tecnico)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO veiculos (placa, nome_cliente, telefone_cliente, ddi_cliente, ddd_cliente, telefone_numero, modelo, cor, combustivel, ano, perfil_tecnico)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(placa) DO UPDATE SET
         nome_cliente = excluded.nome_cliente,
         telefone_cliente = excluded.telefone_cliente,
@@ -437,9 +449,10 @@ app.post('/veiculo', async (req, res) => {
         telefone_numero = excluded.telefone_numero,
         modelo = excluded.modelo,
         cor = excluded.cor,
+        combustivel = excluded.combustivel,
         ano = excluded.ano,
         perfil_tecnico = excluded.perfil_tecnico`,
-      [placaLimpa, nome_cliente || '', telefoneCompat, ddi_cliente, ddd_cliente, telefone_numero, modelo || '', cor || '', parseInt(ano) || 0, perfil_tecnico || '']
+      [placaLimpa, nome_cliente || '', telefoneCompat, ddi_cliente, ddd_cliente, telefone_numero, modelo || '', cor || '', combustivel || 'Não informado', parseInt(ano) || 0, perfil_tecnico || '']
     );
     logInfo(existente ? 'Veículo atualizado' : 'Veículo cadastrado', { placa: placaLimpa });
     res.json({ success: true });
@@ -452,7 +465,7 @@ app.post('/veiculo', async (req, res) => {
 app.get('/ordens-servico', async (req, res) => {
   try {
     const rows = await allAsync(`
-      SELECT os.*, v.nome_cliente, v.telefone_cliente, v.ddi_cliente, v.ddd_cliente, v.telefone_numero, v.modelo, v.cor, v.ano, v.km_atual
+      SELECT os.*, v.nome_cliente, v.telefone_cliente, v.ddi_cliente, v.ddd_cliente, v.telefone_numero, v.modelo, v.cor, v.combustivel, v.ano, v.km_atual
       FROM ordens_servico os
       LEFT JOIN veiculos v ON v.placa = os.placa
       WHERE os.status NOT IN ('entregue', 'cancelado', 'cancelada')
@@ -468,7 +481,7 @@ app.get('/ordens-servico', async (req, res) => {
 app.get('/ordens-servico/:id', async (req, res) => {
   try {
     const row = await getAsync(`
-      SELECT os.*, v.nome_cliente, v.telefone_cliente, v.ddi_cliente, v.ddd_cliente, v.telefone_numero, v.modelo, v.cor, v.ano, v.km_atual
+      SELECT os.*, v.nome_cliente, v.telefone_cliente, v.ddi_cliente, v.ddd_cliente, v.telefone_numero, v.modelo, v.cor, v.combustivel, v.ano, v.km_atual
       FROM ordens_servico os
       LEFT JOIN veiculos v ON v.placa = os.placa
       WHERE os.id = ?
@@ -598,7 +611,7 @@ app.get('/servicos/:placa', async (req, res) => {
 app.get('/pendentes', async (req, res) => {
   try {
     const rows = await allAsync(`
-      SELECT s.*, v.nome_cliente, v.telefone_cliente, v.ddi_cliente, v.ddd_cliente, v.telefone_numero, v.modelo, v.cor, v.ano, v.km_atual
+      SELECT s.*, v.nome_cliente, v.telefone_cliente, v.ddi_cliente, v.ddd_cliente, v.telefone_numero, v.modelo, v.cor, v.combustivel, v.ano, v.km_atual
       FROM servicos s
       LEFT JOIN veiculos v ON v.placa = s.placa
       WHERE s.status_pagamento != 'pago'

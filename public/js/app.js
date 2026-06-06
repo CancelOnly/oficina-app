@@ -35,6 +35,7 @@ function atualizarHeader(data) {
     if ($('headerAno')) $('headerAno').innerText = 'Ano: ---';
     if ($('headerCor')) $('headerCor').innerText = 'Cor: ---';
     if ($('headerKm')) $('headerKm').innerText = 'KM: ---';
+    if ($('headerCombustivel')) $('headerCombustivel').innerText = 'Combustível: ---';
     $('headerCliente').innerText = '---';
     $('headerTelefone').innerText = '---';
     return;
@@ -45,17 +46,21 @@ function atualizarHeader(data) {
   if ($('headerAno')) $('headerAno').innerText = `Ano: ${data.ano || '---'}`;
   if ($('headerCor')) $('headerCor').innerText = `Cor: ${data.cor || '---'}`;
   if ($('headerKm')) $('headerKm').innerText = `KM: ${data.km_atual || 0}`;
+  if ($('headerCombustivel')) $('headerCombustivel').innerText = `Combustível: ${data.combustivel || 'Não informado'}`;
   $('headerCliente').innerText = data.nome_cliente || 'Cliente não informado';
   $('headerTelefone').innerText = formatarTelefoneExibicao(data);
 }
 
 function limparCamposCadastroServico() {
-  ['placa','nome_cliente','modelo','cor','ano','perfil','servico','km','valor_maodeobra','valor_pago','peca_nome','peca_valor'].forEach((id) => { const el = $(id); if (el) el.value = ''; });
+  ['placa','nome_cliente','modelo','cor','combustivel','ano','perfil','servico','km','valor_maodeobra','valor_pago','peca_nome','peca_valor'].forEach((id) => { const el = $(id); if (el) el.value = ''; });
+  if ($('combustivel')) $('combustivel').value = 'Não informado';
   if ($('ddi_cliente')) $('ddi_cliente').value = DDI_PADRAO;
   $('ddd_cliente').value = DDD_PADRAO;
   $('tel_cliente').value = '';
   setFormaPagamento('pendente');
   state.listaPecas = [];
+  state.editandoPecaIndex = null;
+  atualizarBotaoPeca();
   renderizarPecas();
   $('historico').innerHTML = '';
 }
@@ -80,6 +85,7 @@ function abrirVeiculo(data) {
   $('tel_cliente').value = tel.numero || '';
   $('modelo').value = data.modelo || '';
   if ($('cor')) $('cor').value = data.cor || '';
+  if ($('combustivel')) $('combustivel').value = data.combustivel || 'Não informado';
   $('ano').value = data.ano || '';
   $('perfil').value = data.perfil_tecnico || '';
 
@@ -129,6 +135,7 @@ async function salvarCadastro() {
     telefone_cliente: tel ? `${ddi}${ddd}${tel}` : '',
     modelo: $('modelo').value.trim(),
     cor: $('cor')?.value.trim() || '',
+    combustivel: $('combustivel')?.value || 'Não informado',
     ano: parseInt($('ano').value) || 0,
     perfil_tecnico: $('perfil').value.trim(),
   };
@@ -212,26 +219,63 @@ function limparRascunho() {
   $('peca_nome').value = '';
   $('peca_valor').value = '';
   state.listaPecas = [];
+  state.editandoPecaIndex = null;
+  atualizarBotaoPeca();
   renderizarPecas();
   calcularTotal();
   mostrarStatus('Orçamento limpo', 'sucesso');
+}
+
+function atualizarBotaoPeca() {
+  const btn = $('btn-adicionar-peca');
+  if (!btn) return;
+  const editando = Number.isInteger(state.editandoPecaIndex);
+  btn.textContent = editando ? 'Salvar peça' : 'Adicionar';
+  btn.classList.toggle('editing-piece', editando);
+}
+
+function cancelarEdicaoPeca() {
+  state.editandoPecaIndex = null;
+  $('peca_nome').value = '';
+  $('peca_valor').value = '';
+  atualizarBotaoPeca();
 }
 
 function adicionarPeca() {
   const nome = $('peca_nome').value.trim();
   const valor = numero($('peca_valor').value);
   if (!nome) return mostrarStatus('Digite o nome da peça', 'alerta');
-  state.listaPecas.push({ nome, valor });
-  $('peca_nome').value = '';
-  $('peca_valor').value = '';
+
+  if (Number.isInteger(state.editandoPecaIndex) && state.listaPecas[state.editandoPecaIndex]) {
+    state.listaPecas[state.editandoPecaIndex] = { nome, valor };
+    mostrarStatus('Peça atualizada', 'sucesso');
+  } else {
+    state.listaPecas.push({ nome, valor });
+  }
+
+  cancelarEdicaoPeca();
   renderizarPecas();
   salvarRascunho();
 }
+
+function editarPeca(index) {
+  const peca = state.listaPecas[index];
+  if (!peca) return;
+  state.editandoPecaIndex = index;
+  $('peca_nome').value = peca.nome || '';
+  $('peca_valor').value = numero(peca.valor).toFixed(2);
+  atualizarBotaoPeca();
+  $('peca_nome')?.focus();
+}
+
 function removerPeca(index) {
   state.listaPecas.splice(index, 1);
+  if (state.editandoPecaIndex === index) cancelarEdicaoPeca();
+  else if (Number.isInteger(state.editandoPecaIndex) && state.editandoPecaIndex > index) state.editandoPecaIndex -= 1;
   renderizarPecas();
   salvarRascunho();
 }
+
 function renderizarPecas() {
   const lista = $('lista_pecas');
   if (!lista) return;
@@ -242,15 +286,30 @@ function renderizarPecas() {
     const item = document.createElement('div');
     item.className = 'peca-item';
     item.innerHTML = `<div><strong>${escapeHTML(p.nome)}</strong><br><span>${moeda(p.valor)}</span></div>`;
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.textContent = 'X';
-    btn.addEventListener('click', () => removerPeca(i));
-    item.appendChild(btn);
+
+    const actions = document.createElement('div');
+    actions.className = 'peca-actions';
+
+    const btnEditar = document.createElement('button');
+    btnEditar.type = 'button';
+    btnEditar.className = 'peca-edit-btn';
+    btnEditar.textContent = 'Editar';
+    btnEditar.addEventListener('click', () => editarPeca(i));
+
+    const btnRemover = document.createElement('button');
+    btnRemover.type = 'button';
+    btnRemover.className = 'peca-remove-btn';
+    btnRemover.textContent = 'X';
+    btnRemover.addEventListener('click', () => removerPeca(i));
+
+    actions.appendChild(btnEditar);
+    actions.appendChild(btnRemover);
+    item.appendChild(actions);
     lista.appendChild(item);
   });
   $('valor_pecas').value = total.toFixed(2);
   $('valor_pecas_display').innerText = moeda(total);
+  atualizarBotaoPeca();
   calcularTotal();
 }
 function calcularTotal() {
@@ -513,6 +572,8 @@ async function fecharServico() {
     $('peca_nome').value = '';
     $('peca_valor').value = '';
     state.listaPecas = [];
+    state.editandoPecaIndex = null;
+    atualizarBotaoPeca();
     renderizarPecas();
     $('km').value = km;
     await Promise.all([carregarHistorico(state.veiculoAtual.placa), carregarClientes(), carregarPendentes(), carregarOrdensAbertas()]);
@@ -801,12 +862,12 @@ function renderizarTabelaClientes(lista) {
   if (!lista.length) {
     const tr = document.createElement('tr');
     tr.className = 'cliente-row empty-row';
-    tr.innerHTML = `<td data-label="Resultado" colspan="9">Nenhum cliente encontrado.</td>`;
+    tr.innerHTML = `<td data-label="Resultado" colspan="10">Nenhum cliente encontrado.</td>`;
     tbody.appendChild(tr);
     return;
   }
 
-  const labels = ['Cliente', 'Placa', 'Modelo', 'Cor', 'Ano', 'KM', 'Última visita', 'Perfil', 'Telefone'];
+  const labels = ['Cliente', 'Placa', 'Modelo', 'Cor', 'Combustível', 'Ano', 'KM', 'Última visita', 'Perfil', 'Telefone'];
 
   lista.forEach((c) => {
     const tr = document.createElement('tr');
@@ -816,6 +877,7 @@ function renderizarTabelaClientes(lista) {
       `<span class="table-plate">${escapeHTML(c.placa || '-')}</span>`,
       escapeHTML(c.modelo || '-'),
       escapeHTML(c.cor || '-'),
+      escapeHTML(c.combustivel || 'Não informado'),
       escapeHTML(c.ano || '-'),
       `${escapeHTML(c.km_atual || 0)} km`,
       escapeHTML(c.data_ultimo_servico || 'Sem registro'),
@@ -1197,8 +1259,7 @@ function numeroOSAtual() {
 function logoPDFMarkup() {
   const cfg = state.configOficina || {};
   if (state.logoOficina?.exists && state.logoOficina?.url) {
-    const src = state.logoOficina.url.startsWith('http') ? state.logoOficina.url : `${window.location.origin}${state.logoOficina.url}`;
-    return `<img class="os-logo-img" src="${escapeHTML(src)}" alt="Logo da oficina" />`;
+    return `<img class="os-logo-img" src="${state.logoOficina.url}" alt="Logo da oficina" />`;
   }
   return `<div class="os-logo-text"><strong>${escapeHTML(cfg.nome || 'OFICINA')}</strong><small>${escapeHTML(cfg.subtitulo || 'Mecânica Multimarcas')}</small></div>`;
 }
@@ -1308,7 +1369,7 @@ function gerarPDFOrdemServico() {
         <div class="os-field"><span class="os-label">Ano</span>${escapeHTML(state.veiculoAtual.ano || '')}</div>
         <div class="os-field"><span class="os-label">Data</span>${dataAtual}</div>
         <div class="os-field"><span class="os-label">Quilometragem</span>${escapeHTML($('km').value || state.veiculoAtual.km_atual || '')}</div>
-        <div class="os-field"><span class="os-label">Combustível</span></div>
+        <div class="os-field"><span class="os-label">Combustível</span>${escapeHTML(state.veiculoAtual.combustivel || 'Não informado')}</div>
         <div class="os-field"><span class="os-label">Mecânico</span></div>
       </div>
 
@@ -1366,6 +1427,7 @@ function montarMensagemOrcamento() {
 👤 Cliente: ${state.veiculoAtual.nome_cliente || '-'}
 🚗 Veículo: ${state.veiculoAtual.modelo || '-'}
 🎨 Cor: ${state.veiculoAtual.cor || '-'}
+⛽ Combustível: ${state.veiculoAtual.combustivel || 'Não informado'}
 🔖 Placa: ${state.veiculoAtual.placa}
 🛣️ KM: ${$('km').value || '-'}
 
@@ -1420,6 +1482,34 @@ function encaminharOrcamento() {
 }
 function toggleTheme() { const isLight = document.body.classList.toggle('light-mode'); localStorage.setItem('theme', isLight ? 'light' : 'dark'); }
 
+
+function densidadePreferida() {
+  const valor = localStorage.getItem('oficina_ui_density') || 'auto';
+  return ['auto', 'comfortable', 'compact'].includes(valor) ? valor : 'auto';
+}
+
+function modoDensidadeEfetivo(preferencia = densidadePreferida()) {
+  if (preferencia === 'comfortable') return 'comfortable';
+  if (preferencia === 'compact') return 'compact';
+  return (window.innerWidth < 1366 || window.innerHeight < 760) ? 'compact' : 'comfortable';
+}
+
+function aplicarDensidade(preferencia = densidadePreferida()) {
+  const efetiva = modoDensidadeEfetivo(preferencia);
+  document.body.dataset.uiDensity = efetiva;
+  document.body.dataset.uiDensityPreference = preferencia;
+  document.querySelectorAll('.density-choice[data-density]').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.density === preferencia);
+  });
+}
+
+function definirDensidade(preferencia) {
+  const valor = ['auto', 'comfortable', 'compact'].includes(preferencia) ? preferencia : 'auto';
+  localStorage.setItem('oficina_ui_density', valor);
+  aplicarDensidade(valor);
+  mostrarStatus(`Densidade: ${valor === 'auto' ? 'Auto' : valor === 'compact' ? 'Compacta' : 'Confortável'}`, 'sucesso');
+}
+
 function bindEventos() {
   registrarNavegacaoBasica();
   $('btn-buscar-veiculo')?.addEventListener('click', buscarVeiculo);
@@ -1452,6 +1542,8 @@ function bindEventos() {
   $('btn-enviar-logo')?.addEventListener('click', enviarLogoOficina);
   $('btn-remover-logo')?.addEventListener('click', removerLogoOficina);
   $('config-logo-input')?.addEventListener('change', () => { const nome = $('config-logo-input')?.files?.[0]?.name; if (nome && $('config-logo-status')) $('config-logo-status').textContent = `Arquivo selecionado: ${nome}`; });
+  document.querySelectorAll('.density-choice[data-density]').forEach((btn) => btn.addEventListener('click', () => definirDensidade(btn.dataset.density)));
+  window.addEventListener('resize', () => aplicarDensidade(densidadePreferida()));
   $('btn-fazer-backup')?.addEventListener('click', fazerBackupAgora);
   document.querySelectorAll('.payment-choice[data-pagamento]').forEach((btn) => btn.addEventListener('click', () => setFormaPagamento(btn.dataset.pagamento)));
   setFormaPagamento(getFormaPagamento());
@@ -1498,6 +1590,8 @@ document.addEventListener('DOMContentLoaded', () => {
   } catch (err) {
     console.warn('Não foi possível carregar tema salvo', err);
   }
+
+  try { aplicarDensidade(densidadePreferida()); } catch (err) { console.warn('Não foi possível aplicar densidade', err); }
 
   // Primeiro registra a navegação básica. Assim, mesmo que alguma rotina
   // secundária falhe, o app não fica preso na aba Buscar.

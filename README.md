@@ -14,10 +14,8 @@ npm start
 Depois acesse:
 
 ```txt
-http://localhost:3001
+http://localhost:3000
 ```
-
-A porta padrão desta revisão é `3001`. Você ainda pode trocar usando a variável `PORT`.
 
 ## Rodar em outra porta / rede local
 
@@ -194,37 +192,72 @@ O campo **Serviços exibidos no cabeçalho da OS** aceita uma linha por serviço
 
 O PDF continua sendo gerado via HTML/impressão em A4. O navegador não anexa PDF automaticamente ao WhatsApp; o fluxo correto é gerar/imprimir/salvar o PDF e anexar manualmente, se necessário.
 
+## Sprint 1 — UI Notebook + Combustível + Multer 2.x
 
-## Revisão técnica final pré-pull
+Esta sprint não muda o fluxo principal. Ela adiciona ajustes para notebook, campo de combustível e atualização segura do upload de logo.
 
-Esta revisão removeu do pacote de entrega arquivos que não devem ir para o Git, como `.git/`, `oficina.db`, `logs/`, `backups/`, `node_modules/` e uploads reais.
+### Densidade da interface
 
-Ajustes importantes desta revisão:
+Na aba **Configurações**, existe a opção **Densidade da interface**:
 
-- `package.json` e `package-lock.json` foram realinhados.
-- `sqlite3` foi atualizado para `^6.0.1` para melhor compatibilidade com Node moderno e correção de alertas de segurança.
-- `multer` foi fixado em `^1.4.5-lts.2`.
-- Porta padrão ajustada para `3001`, mantendo suporte a `HOST` e `PORT`.
-- Scripts `.bat`/`.ps1` agora rodam `npm install` para garantir dependências após pull.
-- `.gitignore` protege `*.db-wal`, `*.db-shm`, logs, backups, uploads reais, PDFs, `.env` e `node_modules/`.
-- A logo no PDF usa URL absoluta para evitar falha de imagem na janela de impressão.
+- **Auto**: aplica modo compacto quando a tela for menor que 1366px de largura ou menor que 760px de altura.
+- **Confortável**: mantém espaçamentos maiores.
+- **Compacta**: reduz paddings, gaps e altura dos componentes sem deixar a fonte pequena demais.
 
-### Comandos recomendados no notebook servidor
-
-```powershell
-git pull
-npm install
-$env:HOST="0.0.0.0"; $env:PORT="3001"; npm start
-```
-
-Ou dê dois cliques em `INICIAR_OFICINA.bat`.
-
-### Acesso pelo celular na LAN
-
-Com o app rodando no notebook:
+A preferência fica salva no navegador em:
 
 ```txt
-http://IP_DO_NOTE:3001
+oficina_ui_density
 ```
 
-Use apenas em rede local. Não exponha a porta na internet.
+### Campo Combustível
+
+O cadastro de veículo agora possui o campo **Combustível**.
+
+Opções atuais:
+
+- Flex
+- Gasolina
+- Etanol/Álcool
+- Diesel
+- GNV
+- Elétrico
+- Híbrido
+- Outro
+- Não informado
+
+O banco cria a coluna automaticamente se ela não existir:
+
+```sql
+combustivel TEXT DEFAULT 'Não informado'
+```
+
+O combustível aparece no header do veículo, na lista de clientes e na OS/PDF.
+
+### Upload e Multer 2.x
+
+O upload da logo usa `multer` 2.x.
+
+Regras mantidas:
+
+- aceita PNG, JPG/JPEG e WEBP;
+- limite de 2MB;
+- rejeita arquivos inválidos;
+- salva apenas a logo em `uploads/logo-oficina.ext`;
+- `uploads/` continua fora do Git, exceto `.gitkeep`.
+
+### Teste rápido da sprint
+
+- [ ] `npm install`
+- [ ] `npm start`
+- [ ] abrir `http://localhost:3001`
+- [ ] testar densidade Auto/Confortável/Compacta
+- [ ] recarregar e confirmar preferência salva
+- [ ] cadastrar veículo com combustível
+- [ ] abrir veículo e conferir combustível no header
+- [ ] conferir combustível na lista de clientes
+- [ ] gerar OS/PDF e conferir combustível
+- [ ] upload de logo
+- [ ] remover logo
+- [ ] confirmar que não há scroll horizontal global em 1366x768 e 1280x720
+
