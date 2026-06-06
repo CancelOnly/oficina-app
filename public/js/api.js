@@ -48,6 +48,7 @@ export const api = {
   salvarVeiculo: (dados) => request('/veiculo', { method: 'POST', body: JSON.stringify(dados) }),
   salvarServico: (dados) => request('/servico', { method: 'POST', body: JSON.stringify(dados) }),
   listarHistorico: (placa) => request(`/servicos/${placa}`),
+  listarServicos: () => request('/servicos'),
   listarPendentes: () => request('/pendentes'),
   receberPagamento: (id, valor) => request(`/receber/${id}`, { method: 'PUT', body: JSON.stringify({ valor }) }),
   estatisticas: (periodo = 'semanal') => request(`/estatisticas?periodo=${periodo}`),

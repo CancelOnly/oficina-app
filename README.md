@@ -261,3 +261,176 @@ Regras mantidas:
 - [ ] remover logo
 - [ ] confirmar que não há scroll horizontal global em 1366x768 e 1280x720
 
+
+## Sprint 2 — OS/PDF Melhorada + numero_os anual
+
+Esta sprint adiciona uma numeração formal de Ordem de Serviço, sem mudar o fluxo principal do app.
+
+### Regra de numeração
+
+O padrão visual é:
+
+```txt
+YYYY-0001
+```
+
+Exemplos:
+
+```txt
+2026-0001
+2026-0002
+2027-0001
+```
+
+A sequência reinicia a cada ano. O número é gerado automaticamente e não deve ser editado manualmente nesta versão.
+
+### Banco de dados
+
+As migrations adicionam, se faltarem, os campos abaixo em `ordens_servico` e `servicos`:
+
+```sql
+numero_os TEXT
+ano_os INTEGER
+sequencia_os INTEGER
+```
+
+Em `servicos`, também pode existir:
+
+```sql
+ordem_servico_id INTEGER
+```
+
+Registros antigos sem número recebem uma numeração estável baseada em data/id. A migration é idempotente: reiniciar o app não muda números já criados.
+
+### Uso no app
+
+O número aparece como:
+
+```txt
+OS Nº 2026-0001
+```
+
+Ele é mostrado em:
+
+- OS abertas / Oficina Hoje;
+- banner de OS carregada;
+- histórico expandido;
+- pendências;
+- PDF/Ordem de Serviço;
+- mensagens de WhatsApp quando fizer sentido.
+
+Se uma OS ainda não foi salva e não tem número, o PDF mostra:
+
+```txt
+ORÇAMENTO / PRÉVIA
+```
+
+### PDF/OS
+
+O PDF continua incremental e preserva o fluxo atual. Ele usa:
+
+- dados dinâmicos da oficina;
+- logo ou fallback textual;
+- dados do cliente;
+- telefone DDI + DDD + número;
+- dados do veículo;
+- combustível;
+- serviços;
+- peças;
+- M.O. Mecânica;
+- Peças;
+- Total;
+- Pago;
+- Restante;
+- Forma de pagamento.
+
+O navegador não anexa PDF automaticamente ao WhatsApp.
+
+### Teste rápido
+
+- [ ] iniciar com banco atual;
+- [ ] confirmar migrations sem erro;
+- [ ] criar OS aberta;
+- [ ] confirmar `OS Nº YYYY-0001`;
+- [ ] criar segunda OS e confirmar incremento;
+- [ ] fechar serviço rápido sem OS aberta;
+- [ ] confirmar número formal no histórico;
+- [ ] gerar PDF com OS aberta;
+- [ ] gerar PDF sem OS aberta e confirmar `ORÇAMENTO / PRÉVIA`;
+- [ ] abrir pendências e conferir número quando existir;
+- [ ] reiniciar app e confirmar que números não mudam.
+
+## Sprint 2 — Patch final PDF no Histórico
+
+- Adicionado botão `Gerar PDF / OS` em cada serviço finalizado no Histórico.
+- O PDF do Histórico usa os dados salvos daquele serviço, sem criar nova OS e sem alterar `numero_os`.
+- O topo do PDF agora diferencia:
+  - `ORDEM DE SERVIÇO` com `OS Nº YYYY-0001` quando houver número formal;
+  - `ORÇAMENTO / PRÉVIA` quando ainda não houver número definitivo.
+- Removido o campo `END.` do bloco do cliente no PDF.
+- Mantido o campo `CPF/CNPJ` visível no PDF.
+- Combustível, logo/fallback, totais, pagamento e dados da oficina seguem preservados.
+
+## Sprint 2 — Ajuste de fluxo OS / Arquivo
+
+Patch de fluxo para separar orçamento/prévia de Ordem de Serviço oficial.
+
+### Regras principais
+
+- Enviar orçamento não cria `numero_os`.
+- Gerar PDF de orçamento/prévia não cria `numero_os`.
+- Gerar PDF pelo histórico ou pelo Arquivo não cria OS nova.
+- Gerar PDF pelo histórico ou pelo Arquivo não incrementa a sequência anual.
+- `numero_os` formal no padrão `YYYY-0001` é criado somente ao fechar oficialmente o serviço.
+
+### Serviço
+
+A aba Serviço mantém o fluxo rápido como principal:
+
+1. Buscar placa.
+2. Preencher serviço, KM, peças e valores.
+3. Enviar orçamento, se necessário.
+4. Fechar serviço oficialmente.
+
+O botão **Fechar serviço** abre um modal de confirmação com resumo e opções:
+
+- Cancelar.
+- Fechar somente.
+- Fechar e enviar OS pelo WhatsApp.
+
+### Histórico
+
+Cada serviço finalizado no histórico possui botão **Gerar PDF / OS**. Esse botão usa os dados salvos do serviço e não altera o banco.
+
+### Arquivo
+
+A sidebar possui a área **Arquivo**. Dentro dela, a tela **Arquivo de Serviços** lista todas as OS/serviços finalizados da oficina.
+
+Permite:
+
+- buscar por OS, placa, cliente, telefone, modelo ou serviço;
+- filtrar por Todos, Pendentes, Pagos, Hoje e Este mês;
+- ver detalhes;
+- gerar PDF da OS;
+- receber pagamento;
+- abrir o veículo relacionado.
+
+### Limpar orçamento
+
+O botão **Limpar orçamento** é ação secundária e agora pede confirmação antes de apagar dados não fechados.
+
+
+## Patch — Arquivo compacto, filtros por período e orçamento via WhatsApp
+
+Esta rodada ajusta o fluxo sem alterar a regra central de numeração:
+
+- Enviar orçamento abre primeiro o WhatsApp com mensagem de prévia/orçamento.
+- Orçamento/prévia não cria `numero_os`, não fecha serviço e não salva histórico.
+- O PDF de orçamento continua como prévia quando usado antes do fechamento.
+- A tela Arquivo agora lista serviços de forma compacta, com expansão por “Ver detalhes”.
+- O Arquivo mantém filtros rápidos: Todos, Pendentes, Pagos, Hoje e Este mês.
+- Foi adicionada área discreta de filtro por período: mês, ano ou intervalo personalizado.
+- Busca do Arquivo continua combinando com filtros rápidos e período.
+- PDF da OS no Arquivo continua usando dados existentes e não incrementa numeração.
+- Receber pagamento pelo Arquivo reutiliza o fluxo existente e atualiza pendências/financeiro.
+- Modal de fechamento recebeu pequeno polish textual para separar labels e valores.

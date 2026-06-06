@@ -4631,3 +4631,330 @@ body[data-ui-density='compact'] .plate-badge {
     font-size: 17px !important;
   }
 }
+
+/* Sprint 2 patch: ação de PDF no histórico */
+.historico-acoes {
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-pdf-historico {
+  width: auto !important;
+  min-height: 42px;
+  padding: 11px 16px !important;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .historico-acoes {
+    justify-content: stretch;
+  }
+
+  .historico-acoes button {
+    width: 100% !important;
+  }
+}
+
+/* =========================
+   ARQUIVO DE SERVIÇOS
+========================= */
+.servicos-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0 18px;
+}
+
+.servico-filter {
+  width: auto;
+  margin-top: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-main);
+  border-radius: 999px;
+  font-size: 0.9rem;
+}
+
+.servico-filter.active {
+  background: var(--accent-primary);
+  color: #06140b;
+  border-color: var(--accent-primary);
+}
+
+.servicos-global-list {
+  display: grid;
+  gap: 14px;
+}
+
+.arquivo-card {
+  padding: 16px;
+}
+
+.arquivo-empty {
+  padding: 18px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.arquivo-card-header,
+.arquivo-card-meta,
+.arquivo-values,
+.arquivo-acoes {
+  min-width: 0;
+}
+
+.arquivo-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.arquivo-card-header h3 {
+  margin: 8px 0 4px;
+  font-size: 1.05rem;
+}
+
+.arquivo-card-header p,
+.arquivo-card-meta,
+.arquivo-servico-resumo {
+  color: var(--text-secondary);
+}
+
+.arquivo-card-right {
+  text-align: right;
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+
+.arquivo-card-right > strong {
+  color: var(--accent-primary);
+  font-size: 1.15rem;
+}
+
+.arquivo-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+
+.arquivo-servico-resumo {
+  margin: 12px 0 0;
+  line-height: 1.45;
+}
+
+.arquivo-values {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.arquivo-values > div {
+  background: var(--bg-item);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.arquivo-values small {
+  display: block;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.arquivo-details {
+  margin-top: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.arquivo-acoes {
+  margin-top: 14px;
+}
+
+.arquivo-acoes button {
+  width: auto;
+}
+
+@media (max-width: 720px) {
+  .arquivo-card-header {
+    display: grid;
+  }
+
+  .arquivo-card-right {
+    text-align: left;
+    justify-items: start;
+  }
+
+  .arquivo-acoes button {
+    width: 100%;
+  }
+}
+
+/* =========================
+   PATCH ARQUIVO / PERÍODO / MODAL FECHAMENTO
+========================= */
+.servicos-filter-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 12px);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2, 12px);
+}
+
+.servicos-filter-toolbar .servicos-filter-row {
+  margin-bottom: 0;
+}
+
+.btn-periodo-arquivo {
+  width: auto !important;
+  min-height: 40px;
+  padding-inline: 16px !important;
+  margin-top: 0 !important;
+  white-space: nowrap;
+}
+
+.arquivo-periodo-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius, 16px);
+  padding: var(--panel-padding, 16px);
+  margin: 0 0 var(--space-2, 12px);
+  box-shadow: var(--shadow-soft, 0 18px 45px rgba(0,0,0,.18));
+}
+
+.arquivo-periodo-tipos,
+.arquivo-periodo-acoes {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.arquivo-periodo-tipo {
+  width: auto !important;
+  margin-top: 0 !important;
+  padding: 9px 14px !important;
+  border-radius: 999px;
+  background: var(--bg-input);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+}
+
+.arquivo-periodo-tipo.active {
+  background: var(--accent-primary) !important;
+  color: #06140b !important;
+  border-color: transparent;
+}
+
+.arquivo-periodo-campos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  align-items: end;
+  margin-top: 12px;
+}
+
+.arquivo-periodo-campo span {
+  display: block;
+  color: var(--text-secondary);
+  font-size: .86rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.arquivo-periodo-campo input {
+  margin-top: 0;
+}
+
+.arquivo-periodo-acoes button {
+  width: auto !important;
+  margin-top: 0 !important;
+  padding-inline: 16px !important;
+}
+
+.arquivo-periodo-resumo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(37, 211, 102, .12);
+  color: var(--accent-primary);
+  border: 1px solid rgba(37, 211, 102, .25);
+  font-size: .9rem;
+  font-weight: 600;
+  margin: 0 0 var(--space-2, 12px);
+}
+
+.arquivo-compact-header {
+  gap: 14px;
+}
+
+.arquivo-main-info {
+  min-width: 0;
+}
+
+.arquivo-main-info h3,
+.arquivo-main-info p {
+  overflow-wrap: anywhere;
+}
+
+.arquivo-card-right small {
+  color: var(--text-secondary);
+  font-size: .82rem;
+  font-weight: 700;
+}
+
+.arquivo-card .arquivo-details[hidden] {
+  display: none !important;
+}
+
+.modal-summary-grid > div {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.modal-summary-grid span {
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.modal-summary-grid strong {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .servicos-filter-toolbar {
+    align-items: stretch;
+  }
+
+  .servicos-filter-toolbar .servicos-filter-row,
+  .btn-periodo-arquivo {
+    width: 100% !important;
+  }
+
+  .arquivo-periodo-campos {
+    grid-template-columns: 1fr;
+  }
+
+  .arquivo-periodo-acoes button {
+    width: 100% !important;
+  }
+
+  .modal-summary-grid > div {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+}

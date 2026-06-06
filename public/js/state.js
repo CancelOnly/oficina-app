@@ -51,6 +51,8 @@ export const state = {
   listaPecas: [],
   editandoPecaIndex: null,
   clientesCache: [],
+  servicosCache: [],
+  arquivoPeriodo: { tipo: null, mes: '', ano: '', inicio: '', fim: '', resumo: '' },
   colunaAtual: '',
   ordemCrescente: true,
   periodoAtual: 'semanal',

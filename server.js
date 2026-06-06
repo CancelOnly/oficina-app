@@ -158,6 +158,87 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
   else logInfo('Banco conectado', { path: DB_PATH });
 });
 
+
+function parseAnoOS(valor) {
+  if (!valor) return new Date().getFullYear();
+  const texto = String(valor).trim();
+  const iso = texto.match(/^(\d{4})-/);
+  if (iso) return Number(iso[1]) || new Date().getFullYear();
+  const br = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (br) return Number(br[3]) || new Date().getFullYear();
+  const d = new Date(texto);
+  if (!Number.isNaN(d.getTime())) return d.getFullYear();
+  return new Date().getFullYear();
+}
+
+function formatarNumeroOS(ano, sequencia) {
+  return `${ano}-${String(sequencia).padStart(4, '0')}`;
+}
+
+async function proximoNumeroOS(ano = new Date().getFullYear()) {
+  const anoNum = Number(ano) || new Date().getFullYear();
+  const rowOrdens = await getAsync(`SELECT MAX(sequencia_os) AS max_seq FROM ordens_servico WHERE ano_os = ?`, [anoNum]);
+  const rowServicos = await getAsync(`SELECT MAX(sequencia_os) AS max_seq FROM servicos WHERE ano_os = ?`, [anoNum]);
+  const atual = Math.max(Number(rowOrdens?.max_seq || 0), Number(rowServicos?.max_seq || 0));
+  const sequencia = atual + 1;
+  return { ano_os: anoNum, sequencia_os: sequencia, numero_os: formatarNumeroOS(anoNum, sequencia) };
+}
+
+function migrarNumerosOS() {
+  db.all(`
+    SELECT 'servicos' AS origem, id, data AS data_ref, numero_os, ano_os, sequencia_os
+    FROM servicos
+  `, [], (err, rows = []) => {
+    if (err) return logError('Erro ao mapear números de OS', { err: err.message });
+
+    const usados = new Map();
+    const pendentes = [];
+    rows.forEach((row) => {
+      const numero = String(row.numero_os || '').trim();
+      const match = numero.match(/^(\d{4})-(\d{4})$/);
+      if (match) {
+        const ano = Number(match[1]);
+        const seq = Number(match[2]);
+        usados.set(ano, Math.max(usados.get(ano) || 0, seq));
+        if (!row.ano_os || !row.sequencia_os) {
+          db.run(`UPDATE ${row.origem} SET ano_os = ?, sequencia_os = ? WHERE id = ?`, [ano, seq, row.id]);
+        }
+      } else {
+        pendentes.push(row);
+      }
+    });
+
+    pendentes.sort((a, b) => {
+      const da = parseAnoOS(a.data_ref) - parseAnoOS(b.data_ref);
+      if (da) return da;
+      const ta = String(a.data_ref || '').localeCompare(String(b.data_ref || ''));
+      if (ta) return ta;
+      const oa = a.origem.localeCompare(b.origem);
+      if (oa) return oa;
+      return Number(a.id) - Number(b.id);
+    });
+
+    pendentes.forEach((row) => {
+      const ano = parseAnoOS(row.data_ref);
+      const seq = (usados.get(ano) || 0) + 1;
+      usados.set(ano, seq);
+      const numero = formatarNumeroOS(ano, seq);
+      db.run(`UPDATE ${row.origem} SET numero_os = ?, ano_os = ?, sequencia_os = ? WHERE id = ? AND (numero_os IS NULL OR numero_os = '')`, [numero, ano, seq, row.id], (updateErr) => {
+        if (updateErr) logError('Erro ao preencher número de OS legado', { origem: row.origem, id: row.id, err: updateErr.message });
+      });
+    });
+
+    if (pendentes.length) logInfo('Números de OS preenchidos em registros legados', { quantidade: pendentes.length });
+
+    db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_ordens_numero_os ON ordens_servico(numero_os) WHERE numero_os IS NOT NULL AND numero_os != ''`, (idxErr) => {
+      if (idxErr) logError('Erro ao criar índice único numero_os em ordens', { err: idxErr.message });
+    });
+    db.run(`CREATE INDEX IF NOT EXISTS idx_servicos_numero_os ON servicos(numero_os)`, (idxErr) => {
+      if (idxErr) logError('Erro ao criar índice numero_os em serviços', { err: idxErr.message });
+    });
+  });
+}
+
 db.serialize(() => {
   db.run(`
     CREATE TABLE IF NOT EXISTS veiculos (
@@ -240,13 +321,20 @@ db.serialize(() => {
       valor_pago REAL DEFAULT 0,
       forma_pagamento TEXT,
       status_pagamento TEXT DEFAULT 'pendente',
-      data TEXT
+      data TEXT,
+      ordem_servico_id INTEGER,
+      numero_os TEXT,
+      ano_os INTEGER,
+      sequencia_os INTEGER
     )
   `);
 
   db.run(`
     CREATE TABLE IF NOT EXISTS ordens_servico (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      numero_os TEXT,
+      ano_os INTEGER,
+      sequencia_os INTEGER,
       placa TEXT,
       status TEXT DEFAULT 'orcamento',
       km INTEGER,
@@ -264,6 +352,35 @@ db.serialize(() => {
     )
   `);
 
+  function addServicoColumn(column, ddl) {
+    db.run(`ALTER TABLE servicos ADD COLUMN ${column} ${ddl}`, (err) => {
+      if (!err) return logInfo('Coluna adicionada', { table: 'servicos', column });
+      if (!String(err.message || '').includes('duplicate column name')) {
+        logError('Erro ao adicionar coluna', { table: 'servicos', column, err: err.message });
+      }
+    });
+  }
+
+  addServicoColumn('numero_os', 'TEXT');
+  addServicoColumn('ano_os', 'INTEGER');
+  addServicoColumn('sequencia_os', 'INTEGER');
+  addServicoColumn('ordem_servico_id', 'INTEGER');
+
+  function addOrdemColumn(column, ddl) {
+    db.run(`ALTER TABLE ordens_servico ADD COLUMN ${column} ${ddl}`, (err) => {
+      if (!err) return logInfo('Coluna adicionada', { table: 'ordens_servico', column });
+      if (!String(err.message || '').includes('duplicate column name')) {
+        logError('Erro ao adicionar coluna', { table: 'ordens_servico', column, err: err.message });
+      }
+    });
+  }
+
+  addOrdemColumn('numero_os', 'TEXT');
+  addOrdemColumn('ano_os', 'INTEGER');
+  addOrdemColumn('sequencia_os', 'INTEGER');
+
+  migrarNumerosOS();
+
   createIndex('idx_veiculos_placa', `CREATE INDEX IF NOT EXISTS idx_veiculos_placa ON veiculos(placa)`);
   createIndex('idx_servicos_placa', `CREATE INDEX IF NOT EXISTS idx_servicos_placa ON servicos(placa)`);
   createIndex('idx_servicos_data', `CREATE INDEX IF NOT EXISTS idx_servicos_data ON servicos(data)`);
@@ -271,6 +388,8 @@ db.serialize(() => {
   createIndex('idx_ordens_placa', `CREATE INDEX IF NOT EXISTS idx_ordens_placa ON ordens_servico(placa)`);
   createIndex('idx_ordens_status', `CREATE INDEX IF NOT EXISTS idx_ordens_status ON ordens_servico(status)`);
   createIndex('idx_ordens_data_abertura', `CREATE INDEX IF NOT EXISTS idx_ordens_data_abertura ON ordens_servico(data_abertura)`);
+  createIndex('idx_ordens_ano_seq', `CREATE INDEX IF NOT EXISTS idx_ordens_ano_seq ON ordens_servico(ano_os, sequencia_os)`);
+  createIndex('idx_servicos_ano_seq', `CREATE INDEX IF NOT EXISTS idx_servicos_ano_seq ON servicos(ano_os, sequencia_os)`);
 });
 
 async function fazerBackup() {
@@ -495,6 +614,7 @@ app.get('/ordens-servico/:id', async (req, res) => {
 });
 
 app.post('/ordens-servico', async (req, res) => {
+  let iniciouTransacao = false;
   try {
     const placa = limparPlaca(req.body.placa);
     if (!placa) return res.status(400).json({ erro: 'Placa obrigatória' });
@@ -502,6 +622,12 @@ app.post('/ordens-servico', async (req, res) => {
     const pago = numero(req.body.valor_pago || 0);
     if (pago < 0 || pago > total) return res.status(400).json({ erro: 'Valor pago inválido para a OS' });
     const agora = dataBR();
+
+    await runAsync('BEGIN IMMEDIATE');
+    iniciouTransacao = true;
+
+    // OS aberta é operacional/orçamento. Não consome numero_os formal.
+    // O numero_os no padrão YYYY-0001 só é gerado no fechamento oficial do serviço.
     const result = await runAsync(
       `INSERT INTO ordens_servico (
         placa, status, km, servico, pecas_trocadas, valor_pecas, valor_maodeobra,
@@ -509,9 +635,15 @@ app.post('/ordens-servico', async (req, res) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [placa, req.body.status || 'orcamento', parseInt(req.body.km) || 0, req.body.servico || '', req.body.pecas_trocadas || '[]', numero(req.body.valor_pecas || 0), numero(req.body.valor_maodeobra || 0), total, pago, req.body.forma_pagamento || 'pendente', req.body.observacoes || '', agora, agora]
     );
-    logInfo('OS aberta criada', { id: result.lastID, placa });
+    await runAsync('COMMIT');
+    iniciouTransacao = false;
+
+    logInfo('OS aberta criada como orçamento/prévia', { id: result.lastID, placa });
     res.json({ success: true, id: result.lastID });
   } catch (err) {
+    if (iniciouTransacao) {
+      try { await runAsync('ROLLBACK'); } catch (_) {}
+    }
     logError('Erro ao criar OS', { err: err.message });
     res.status(500).json({ erro: err.message });
   }
@@ -564,6 +696,7 @@ app.put('/ordens-servico/:id/status', async (req, res) => {
 });
 
 app.post('/servico', async (req, res) => {
+  let iniciouTransacao = false;
   try {
     const placaLimpa = limparPlaca(req.body.placa);
     if (!placaLimpa) return res.status(400).json({ erro: 'Placa obrigatória' });
@@ -581,18 +714,67 @@ app.post('/servico', async (req, res) => {
 
     const status_pagamento = calcularStatusPagamento(total, pago);
     const dataAtual = dataBR();
+    const ordemId = req.body.ordem_servico_id ? Number(req.body.ordem_servico_id) : null;
+
+    await runAsync('BEGIN IMMEDIATE');
+    iniciouTransacao = true;
+
+    let numeracao = null;
+    if (ordemId) {
+      const os = await getAsync(`SELECT id, numero_os, ano_os, sequencia_os FROM ordens_servico WHERE id = ?`, [ordemId]);
+      if (os?.numero_os) {
+        numeracao = { numero_os: os.numero_os, ano_os: os.ano_os || parseAnoOS(dataAtual), sequencia_os: os.sequencia_os || 0 };
+      }
+    }
+    if (!numeracao) numeracao = await proximoNumeroOS(parseAnoOS(dataAtual));
+
+    if (ordemId) {
+      await runAsync(
+        `UPDATE ordens_servico
+         SET numero_os = COALESCE(NULLIF(numero_os, ''), ?),
+             ano_os = COALESCE(ano_os, ?),
+             sequencia_os = COALESCE(sequencia_os, ?),
+             data_atualizacao = ?
+         WHERE id = ?`,
+        [numeracao.numero_os, numeracao.ano_os, numeracao.sequencia_os, dataAtual, ordemId]
+      );
+    }
+
     const result = await runAsync(
       `INSERT INTO servicos (
         placa, km, servico, pecas_trocadas, valor_pecas, valor_maodeobra,
-        valor_total, valor_pago, forma_pagamento, status_pagamento, data
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [placaLimpa, kmNum, req.body.servico || '', req.body.pecas_trocadas || '[]', numero(req.body.valor_pecas || 0), numero(req.body.valor_maodeobra || 0), total, pago, req.body.forma_pagamento || 'pendente', status_pagamento, dataAtual]
+        valor_total, valor_pago, forma_pagamento, status_pagamento, data,
+        ordem_servico_id, numero_os, ano_os, sequencia_os
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [placaLimpa, kmNum, req.body.servico || '', req.body.pecas_trocadas || '[]', numero(req.body.valor_pecas || 0), numero(req.body.valor_maodeobra || 0), total, pago, req.body.forma_pagamento || 'pendente', status_pagamento, dataAtual, ordemId, numeracao.numero_os, numeracao.ano_os, numeracao.sequencia_os]
     );
     await runAsync(`UPDATE veiculos SET km_atual = ? WHERE placa = ?`, [kmNum, placaLimpa]);
-    logInfo('Serviço fechado', { id: result.lastID, placa: placaLimpa, total, pago });
-    res.json({ success: true, id: result.lastID });
+    await runAsync('COMMIT');
+    iniciouTransacao = false;
+
+    logInfo('Serviço fechado', { id: result.lastID, numero_os: numeracao.numero_os, placa: placaLimpa, total, pago });
+    res.json({ success: true, id: result.lastID, ...numeracao });
   } catch (err) {
+    if (iniciouTransacao) {
+      try { await runAsync('ROLLBACK'); } catch (_) {}
+    }
     logError('Erro ao fechar serviço', { err: err.message });
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.get('/servicos', async (req, res) => {
+  try {
+    const rows = await allAsync(`
+      SELECT s.*, v.nome_cliente, v.telefone_cliente, v.ddi_cliente, v.ddd_cliente, v.telefone_numero,
+             v.modelo, v.cor, v.combustivel, v.ano, v.km_atual
+      FROM servicos s
+      LEFT JOIN veiculos v ON v.placa = s.placa
+      ORDER BY s.id DESC
+    `);
+    res.json(rows);
+  } catch (err) {
+    logError('Erro ao listar serviços globais', { err: err.message });
     res.status(500).json({ erro: err.message });
   }
 });

@@ -22,6 +22,7 @@
           <nav class="sidebar-nav" aria-label="Navegação principal">
             <button class="sidebar-btn active" data-secao="oficina"><span>🔧</span><strong>Oficina Hoje</strong></button>
             <button class="sidebar-btn" data-secao="clientes"><span>👥</span><strong>Clientes</strong></button>
+            <button class="sidebar-btn" data-secao="servicos"><span>🗄️</span><strong>Arquivo</strong></button>
             <button class="sidebar-btn" data-secao="pendentes"><span>💰</span><strong>Pendências</strong></button>
             <button class="sidebar-btn" data-secao="financeiro"><span>📊</span><strong>Financeiro</strong></button>
             <button class="sidebar-btn" data-secao="config"><span>⚙</span><strong>Config</strong></button>
@@ -108,12 +109,13 @@
               <div class="service-layout">
                 <div class="service-main-column">
                   <div class="card service-card">
-                    <div class="section-title-row">
+                    <div class="section-title-row service-title-actions">
                       <div>
                         <div class="eyebrow">Serviço rápido</div>
                         <h2>Registrar serviço</h2>
                         <p>Preencha apenas o necessário para registrar o que foi feito e fechar no histórico.</p>
                       </div>
+                      <button id="btn-limpar-rascunho" class="btn-limpar btn-inline">Limpar orçamento</button>
                     </div>
                     <div id="os-atual-banner" class="os-atual-banner hidden"></div>
 
@@ -192,15 +194,12 @@
                     </div>
                     <input type="number" id="valor_total" readonly hidden />
 
-                    <div class="service-actions">
-                      <button id="btn-encaminhar-orcamento" class="btn-orcamento">Encaminhar Orçamento</button>
-                      <button id="btn-gerar-pdf" class="btn-secondary">Gerar PDF/Imprimir</button>
-                      <button id="btn-limpar-rascunho" class="btn-limpar">Limpar Orçamento</button>
+                    <div class="service-actions service-actions-simplified">
+                      <button id="btn-encaminhar-orcamento" class="btn-orcamento">Enviar orçamento</button>
+                      <button id="btn-fechar-servico" class="salvar">Fechar serviço</button>
                       <button id="btn-salvar-os" class="btn-secondary">Manter na Oficina</button>
                       <button id="btn-marcar-pronto" class="btn-secondary hidden">Marcar Pronto</button>
                       <button id="btn-cancelar-os" class="btn-limpar hidden">Cancelar OS</button>
-                      <button id="btn-fechar-servico" class="salvar">Fechar Serviço</button>
-                      <button id="btn-gerar-whatsapp">WhatsApp Fechamento</button>
                     </div>
                   </div>
                 </aside>
@@ -295,6 +294,41 @@
                 </table>
               </div>
             </div>
+          </div>
+        </section>
+
+        <section id="secao-servicos" class="secao-global">
+          <div class="container section-container">
+            <div class="section-hero compact-hero">
+              <div><div class="eyebrow">Arquivo</div><h2>Arquivo de Serviços</h2><p>Todas as OS e serviços finalizados da oficina.</p></div>
+              <input type="text" id="busca_servicos" placeholder="Buscar OS, placa, cliente, telefone, modelo ou serviço..." />
+            </div>
+            <div class="servicos-filter-toolbar">
+              <div class="servicos-filter-row">
+                <button type="button" class="servico-filter active" data-servico-filtro="todos">Todos</button>
+                <button type="button" class="servico-filter" data-servico-filtro="pendentes">Pendentes</button>
+                <button type="button" class="servico-filter" data-servico-filtro="pagos">Pagos</button>
+                <button type="button" class="servico-filter" data-servico-filtro="hoje">Hoje</button>
+                <button type="button" class="servico-filter" data-servico-filtro="mes">Este mês</button>
+              </div>
+              <button type="button" id="btn-toggle-periodo-arquivo" class="btn-secondary btn-periodo-arquivo">Período ▾</button>
+            </div>
+            <div id="arquivo-periodo-panel" class="arquivo-periodo-panel" hidden>
+              <div class="arquivo-periodo-tipos">
+                <button type="button" class="arquivo-periodo-tipo active" data-periodo-tipo="mes">Mês</button>
+                <button type="button" class="arquivo-periodo-tipo" data-periodo-tipo="ano">Ano</button>
+                <button type="button" class="arquivo-periodo-tipo" data-periodo-tipo="personalizado">Personalizado</button>
+              </div>
+              <div class="arquivo-periodo-campos">
+                <label class="arquivo-periodo-campo" data-periodo-campo="mes"><span>Mês</span><input type="month" id="arquivo-periodo-mes" /></label>
+                <label class="arquivo-periodo-campo" data-periodo-campo="ano" hidden><span>Ano</span><input type="number" id="arquivo-periodo-ano" min="2000" max="2100" placeholder="2026" /></label>
+                <label class="arquivo-periodo-campo" data-periodo-campo="inicio" hidden><span>Data inicial</span><input type="date" id="arquivo-periodo-inicio" /></label>
+                <label class="arquivo-periodo-campo" data-periodo-campo="fim" hidden><span>Data final</span><input type="date" id="arquivo-periodo-fim" /></label>
+                <div class="arquivo-periodo-acoes"><button type="button" id="btn-aplicar-periodo-arquivo" class="btn-confirmar">Aplicar</button><button type="button" id="btn-limpar-periodo-arquivo" class="btn-secondary">Limpar período</button></div>
+              </div>
+            </div>
+            <div id="arquivo-periodo-resumo" class="arquivo-periodo-resumo" hidden></div>
+            <div id="lista-servicos-global" class="servicos-global-list"></div>
           </div>
         </section>
 
@@ -419,6 +453,30 @@
     </div>
 
     <div id="container-modais">
+      <div class="modal-overlay" id="modal-confirmar-fechamento">
+        <div class="modal-box modal-fechamento">
+          <h2>Fechar serviço oficialmente?</h2>
+          <p class="modal-help">Ao confirmar, será gerada uma Ordem de Serviço oficial com número no padrão YYYY-0001.</p>
+          <div id="modal-fechamento-resumo" class="modal-summary-grid"></div>
+          <div class="modal-actions modal-actions-three">
+            <button id="btn-cancelar-fechamento" class="btn-cancelar">Cancelar</button>
+            <button id="btn-fechar-somente" class="btn-secondary">Fechar somente</button>
+            <button id="btn-fechar-enviar-os" class="btn-confirmar">Fechar e enviar OS pelo WhatsApp</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-overlay" id="modal-confirmar-limpar">
+        <div class="modal-box modal-warning">
+          <h2>Limpar orçamento atual?</h2>
+          <p class="modal-help">Essa ação remove serviço digitado, peças e valores ainda não fechados.</p>
+          <div class="modal-actions">
+            <button id="btn-cancelar-limpar" class="btn-cancelar">Cancelar</button>
+            <button id="btn-confirmar-limpar" class="btn-confirmar">Sim, limpar</button>
+          </div>
+        </div>
+      </div>
+
       <div class="modal-overlay" id="modal-recebimento"><div class="modal-box"><h2>Receber Pagamento</h2><p id="modal-info-cliente"></p><input type="number" id="modal-valor" placeholder="Digite o valor" step="0.01" /><small id="modal-recebimento-aviso" class="modal-help"></small><div class="modal-actions"><button id="btn-cancelar-recebimento" class="btn-cancelar">Cancelar</button><button id="btn-confirmar-recebimento" class="btn-confirmar">Confirmar</button></div></div></div>
       <div class="modal-overlay" id="modal-alerta-peca"><div class="modal-box"><h3 style="color:var(--accent-primary);margin-bottom:15px">⚠️ Peça não adicionada</h3><p id="msg-alerta-peca" style="margin-bottom:20px;line-height:1.5"></p><div class="modal-actions"><button id="btn-fechar-alerta" class="btn-cancelar">Voltar e Adicionar</button><button id="btn-limpar-peca-fechar" class="btn-confirmar" style="background:#6366f1">Descartar peça e continuar</button></div></div></div>
       <div class="modal-overlay" id="modal-novo-atalho"><div class="modal-box"><h2>Novo atalho rápido</h2><p class="modal-help">Digite o nome do serviço que deve aparecer na aba Serviço.</p><input type="text" id="modal-atalho-nome" placeholder="Ex: Limpeza de TBI" /><div class="modal-actions"><button id="btn-cancelar-atalho" class="btn-cancelar">Cancelar</button><button id="btn-confirmar-atalho" class="btn-confirmar">Adicionar</button></div></div></div>

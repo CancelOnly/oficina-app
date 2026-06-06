@@ -21,6 +21,7 @@ function trocarSecao(nome) {
   document.querySelector(`.sidebar-btn[data-secao="${nome}"]`)?.classList.add('active');
   if (nome === 'clientes') carregarClientes();
   if (nome === 'pendentes') carregarPendentes();
+  if (nome === 'servicos') carregarServicosGlobais();
   if (nome === 'financeiro') atualizarFinanceiro();
   if (nome === 'oficina') carregarOrdensAbertas();
 }
@@ -226,6 +227,20 @@ function limparRascunho() {
   mostrarStatus('Orçamento limpo', 'sucesso');
 }
 
+
+function abrirModalLimparOrcamento() {
+  $('modal-confirmar-limpar')?.classList.add('active');
+}
+
+function fecharModalLimparOrcamento() {
+  $('modal-confirmar-limpar')?.classList.remove('active');
+}
+
+function confirmarLimparOrcamento() {
+  fecharModalLimparOrcamento();
+  limparRascunho();
+}
+
 function atualizarBotaoPeca() {
   const btn = $('btn-adicionar-peca');
   if (!btn) return;
@@ -360,6 +375,13 @@ function dadosServicoAtual(status = 'orcamento') {
   };
 }
 
+function numeroOSVisual(item = null) {
+  const numero = item?.numero_os || item?.numeroOS || '';
+  if (numero) return `OS Nº ${numero}`;
+  if (item?.id) return `OS Nº ${String(item.id).padStart(6, '0')}`;
+  return 'ORÇAMENTO / PRÉVIA';
+}
+
 function labelStatusOS(status = 'orcamento') {
   const mapa = {
     orcamento: 'Orçamento',
@@ -384,7 +406,7 @@ function atualizarBannerOS() {
     return;
   }
   banner.classList.remove('hidden');
-  banner.innerHTML = `<div><strong>OS #${os.id} • ${labelStatusOS(os.status)}</strong><span>Esta OS está salva na Oficina Hoje. Ao fechar serviço, ela entra no histórico do veículo.</span></div><span class="os-status ${escapeHTML(os.status)}">${labelStatusOS(os.status)}</span>`;
+  banner.innerHTML = `<div><strong>${escapeHTML(numeroOSVisual(os))} • ${labelStatusOS(os.status)}</strong><span>Esta OS está salva na Oficina Hoje. Ao fechar serviço, ela entra no histórico do veículo.</span></div><span class="os-status ${escapeHTML(os.status)}">${labelStatusOS(os.status)}</span>`;
   $('btn-marcar-pronto')?.classList.toggle('hidden', os.status === 'pronto');
   $('btn-cancelar-os')?.classList.remove('hidden');
 }
@@ -439,7 +461,7 @@ function renderizarOrdensAbertas(ordens = []) {
     const restante = Math.max(0, numero(os.valor_total) - numero(os.valor_pago));
     card.innerHTML = `
       <div class="os-card-header">
-        <div><strong>${escapeHTML(os.placa || '-')}</strong><span>${escapeHTML(os.modelo || 'Veículo')} • ${escapeHTML(os.nome_cliente || 'Cliente')}</span></div>
+        <div><strong>${escapeHTML(os.placa || '-')}</strong><span>${escapeHTML(numeroOSVisual(os))} • ${escapeHTML(os.modelo || 'Veículo')} • ${escapeHTML(os.nome_cliente || 'Cliente')}</span></div>
         <span class="os-status ${escapeHTML(os.status)}">${labelStatusOS(os.status)}</span>
       </div>
       <div class="os-card-service">${escapeHTML(os.servico || 'Sem descrição do serviço')}</div>
@@ -469,7 +491,7 @@ async function abrirOrdemServico(id) {
     aplicarOrdemNoFormulario(os);
     trocarSecao('oficina');
     trocarAba('servico');
-    mostrarStatus(`OS #${os.id} aberta`, 'sucesso');
+    mostrarStatus(`${numeroOSVisual(os)} aberta`, 'sucesso');
   } catch (err) {
     console.error(err);
     mostrarStatus(err.message || 'Erro ao abrir OS', 'erro');
@@ -488,7 +510,7 @@ async function salvarOrdemAberta(statusPreferido = null) {
       mostrarStatus('OS atualizada na Oficina Hoje', 'sucesso');
     } else {
       const result = await api.criarOrdemServico(dados);
-      state.osAtual = { id: result.id, ...dados, ...state.veiculoAtual };
+      state.osAtual = { id: result.id, numero_os: result.numero_os, ano_os: result.ano_os, sequencia_os: result.sequencia_os, ...dados, ...state.veiculoAtual };
       mostrarStatus('OS mantida na Oficina Hoje', 'sucesso');
     }
     atualizarBannerOS();
@@ -535,18 +557,24 @@ async function cancelarOSAtual() {
   }
 }
 
-async function fecharServico() {
-  if (!state.veiculoAtual) return mostrarStatus('Nenhum veículo selecionado', 'alerta');
+
+function validarDadosParaFechamento() {
+  if (!state.veiculoAtual) { mostrarStatus('Nenhum veículo selecionado', 'alerta'); return false; }
   const total = numero($('valor_total').value);
-  if (total <= 0) { $('valor_maodeobra').focus(); return mostrarStatus('O valor total não pode ser R$ 0,00', 'alerta'); }
-  if (temPecaDigitadaNaoAdicionada()) { abrirModalAlertaPeca(() => fecharServico(), 'Descartar peça e finalizar'); return; }
+  if (total <= 0) { $('valor_maodeobra')?.focus(); mostrarStatus('O valor total não pode ser R$ 0,00', 'alerta'); return false; }
+  if (temPecaDigitadaNaoAdicionada()) { abrirModalAlertaPeca(() => abrirModalFechamento(), 'Descartar peça e continuar'); return false; }
   const km = parseInt($('km').value) || 0;
   const kmAnterior = parseInt(state.veiculoAtual.km_atual) || 0;
-  if (km <= 0) { $('km').focus(); return mostrarStatus('Informe a KM atual', 'alerta'); }
-  if (km < kmAnterior) return mostrarStatus(`KM inválida! A última foi ${kmAnterior}.`, 'alerta');
-  const dados = {
+  if (km <= 0) { $('km')?.focus(); mostrarStatus('Informe a KM atual', 'alerta'); return false; }
+  if (km < kmAnterior) { mostrarStatus(`KM inválida! A última foi ${kmAnterior}.`, 'alerta'); return false; }
+  return true;
+}
+
+function montarDadosFechamento() {
+  const total = numero($('valor_total').value);
+  return {
     placa: state.veiculoAtual.placa,
-    km,
+    km: parseInt($('km').value) || 0,
     servico: $('servico').value.trim(),
     pecas_trocadas: JSON.stringify(state.listaPecas),
     valor_pecas: numero($('valor_pecas').value),
@@ -554,15 +582,62 @@ async function fecharServico() {
     valor_total: total,
     valor_pago: numero($('valor_pago').value),
     forma_pagamento: getFormaPagamento(),
+    ordem_servico_id: state.osAtual?.id || null,
   };
+}
+
+function abrirModalFechamento() {
+  if (!validarDadosParaFechamento()) return;
+  const dados = montarDadosFechamento();
+  const restante = Math.max(0, numero(dados.valor_total) - numero(dados.valor_pago));
+  const resumo = $('modal-fechamento-resumo');
+  if (resumo) {
+    resumo.innerHTML = `
+      <div><span>Cliente:</span><strong>${escapeHTML(state.veiculoAtual?.nome_cliente || '-')}</strong></div>
+      <div><span>Veículo:</span><strong>${escapeHTML([state.veiculoAtual?.placa, state.veiculoAtual?.modelo].filter(Boolean).join(' • ') || '-')}</strong></div>
+      <div><span>Total:</span><strong>${moeda(dados.valor_total)}</strong></div>
+      <div><span>Pago:</span><strong>${moeda(dados.valor_pago)}</strong></div>
+      <div><span>Restante:</span><strong>${moeda(restante)}</strong></div>
+      <div><span>Pagamento:</span><strong>${escapeHTML(dados.forma_pagamento || 'pendente')}</strong></div>
+      <div class="modal-summary-wide"><span>Serviço:</span><strong>${escapeHTML(dados.servico || 'Sem descrição')}</strong></div>
+      <div class="modal-summary-wide"><span>Peças:</span><strong>${state.listaPecas.length} item(ns)</strong></div>
+    `;
+  }
+  $('modal-confirmar-fechamento')?.classList.add('active');
+}
+
+function fecharModalFechamento() { $('modal-confirmar-fechamento')?.classList.remove('active'); }
+
+function fecharServico() {
+  abrirModalFechamento();
+}
+
+async function executarFechamento({ enviarOS = false } = {}) {
+  if (!validarDadosParaFechamento()) return;
+  const dados = montarDadosFechamento();
   try {
-    await api.salvarServico(dados);
+    const result = await api.salvarServico(dados);
+    const itemFechado = {
+      ...dados,
+      id: result?.id || null,
+      data: new Date().toLocaleDateString('pt-BR'),
+      numero_os: result?.numero_os || '',
+      ano_os: result?.ano_os,
+      sequencia_os: result?.sequencia_os,
+    };
+
     if (state.osAtual?.id) {
       await api.alterarStatusOrdemServico(state.osAtual.id, 'entregue').catch(console.error);
       state.osAtual = null;
       atualizarBannerOS();
     }
-    state.veiculoAtual.km_atual = km;
+
+    if (enviarOS) {
+      abrirDocumentoOSPDF({ veiculo: state.veiculoAtual, servicoItem: itemFechado, pecas: state.listaPecas, finalizado: true });
+      abrirWhatsAppOSFechada(itemFechado);
+    }
+
+    state.veiculoAtual.km_atual = dados.km;
     cancelarAutoSavePendente();
     localStorage.removeItem(chaveRascunho(state.veiculoAtual.placa));
     $('servico').value = '';
@@ -575,12 +650,14 @@ async function fecharServico() {
     state.editandoPecaIndex = null;
     atualizarBotaoPeca();
     renderizarPecas();
-    $('km').value = km;
-    await Promise.all([carregarHistorico(state.veiculoAtual.placa), carregarClientes(), carregarPendentes(), carregarOrdensAbertas()]);
+    $('km').value = dados.km;
+    fecharModalFechamento();
+    await Promise.all([carregarHistorico(state.veiculoAtual.placa), carregarClientes(), carregarPendentes(), carregarOrdensAbertas(), carregarServicosGlobais(false)]);
     trocarAba('historico');
-    mostrarStatus('Serviço fechado e KM atualizado', 'sucesso');
+    mostrarStatus(`Serviço fechado. ${numeroOSVisual(itemFechado)}`, 'sucesso');
   } catch (err) { console.error(err); mostrarStatus(err.message || 'Erro ao fechar serviço', 'erro'); }
 }
+
 function temPecaDigitadaNaoAdicionada() {
   return Boolean($('peca_nome')?.value.trim() || $('peca_valor')?.value.trim());
 }
@@ -656,7 +733,7 @@ async function carregarHistorico(placa) {
       el.innerHTML = `
         <div class="historico-header history-polished-header" data-toggle-historico="${index}">
           <div class="history-head-left">
-            <div class="history-meta-line"><span>${escapeHTML(item.data || '-')}</span><span class="badge-km">📍 ${escapeHTML(item.km || 0)} KM</span></div>
+            <div class="history-meta-line"><span>${escapeHTML(item.data || '-')}</span><span class="badge-km">${escapeHTML(numeroOSVisual(item))}</span><span class="badge-km">📍 ${escapeHTML(item.km || 0)} KM</span></div>
             <p><strong>${escapeHTML(item.servico || 'Sem descrição')}</strong></p>
           </div>
           <div class="historico-header-right"><strong>${moeda(total)}</strong><span id="seta-${index}">ver detalhes ▼</span></div>
@@ -673,6 +750,7 @@ async function carregarHistorico(placa) {
           <section class="history-detail-block history-payment-block">
             <small>Pagamento</small>
             <div class="history-payment-grid">
+              <div><span>OS</span><strong>${escapeHTML(numeroOSVisual(item))}</strong></div>
               <div><span>Situação</span><strong><span class="status-${escapeHTML(status)}">${escapeHTML(status.toUpperCase())}</span></strong></div>
               <div><span>Total</span><strong>${moeda(total)}</strong></div>
               <div><span>Pago</span><strong>${moeda(pago)}</strong></div>
@@ -681,14 +759,26 @@ async function carregarHistorico(placa) {
             </div>
           </section>
         </div>`;
+      const acoes = document.createElement('div');
+      acoes.className = 'historico-acoes';
+
+      const btnPdf = document.createElement('button');
+      btnPdf.className = 'btn-secondary btn-pdf-historico';
+      btnPdf.type = 'button';
+      btnPdf.textContent = '📄 Gerar PDF / OS';
+      btnPdf.addEventListener('click', () => gerarPDFHistorico(item));
+      acoes.appendChild(btnPdf);
+
       if (status !== 'pago') {
-        const acoes = document.createElement('div');
-        acoes.className = 'historico-acoes';
         const btn = document.createElement('button');
-        btn.className = 'btn-receber'; btn.type = 'button'; btn.textContent = '💰 Receber Pagamento';
+        btn.className = 'btn-receber';
+        btn.type = 'button';
+        btn.textContent = '💰 Receber Pagamento';
         btn.addEventListener('click', () => receberPagamento(item.id, restante, item.placa));
-        acoes.appendChild(btn); el.appendChild(acoes);
+        acoes.appendChild(btn);
       }
+
+      el.appendChild(acoes);
       historico.appendChild(el);
     });
   } catch (err) { console.error(err); mostrarStatus('Erro ao carregar histórico', 'erro'); }
@@ -700,6 +790,227 @@ function toggleHistorico(index) {
   body.style.display = aberto ? 'none' : 'block';
   body.classList.toggle('active', !aberto);
   if (seta) seta.textContent = aberto ? 'ver detalhes ▼' : 'fechar ▲';
+}
+
+
+function dataBRParaDate(valor = '') {
+  const texto = String(valor || '').trim();
+  let m = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  m = texto.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return null;
+}
+
+function dataLocalISO(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function selecionarFiltroArquivo(filtro = 'todos') {
+  document.querySelectorAll('.servico-filter[data-servico-filtro]').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.servicoFiltro === filtro);
+  });
+}
+
+function limparPeriodoArquivo({ renderizar = true } = {}) {
+  state.arquivoPeriodo = { tipo: null, mes: '', ano: '', inicio: '', fim: '', resumo: '' };
+  const resumo = $('arquivo-periodo-resumo');
+  if (resumo) { resumo.hidden = true; resumo.textContent = ''; }
+  if ($('arquivo-periodo-mes')) $('arquivo-periodo-mes').value = '';
+  if ($('arquivo-periodo-ano')) $('arquivo-periodo-ano').value = '';
+  if ($('arquivo-periodo-inicio')) $('arquivo-periodo-inicio').value = '';
+  if ($('arquivo-periodo-fim')) $('arquivo-periodo-fim').value = '';
+  if (renderizar) renderizarServicosGlobais();
+}
+
+function aplicarTipoPeriodoArquivo(tipo = 'mes') {
+  document.querySelectorAll('.arquivo-periodo-tipo').forEach((btn) => btn.classList.toggle('active', btn.dataset.periodoTipo === tipo));
+  document.querySelectorAll('[data-periodo-campo]').forEach((el) => {
+    const campo = el.dataset.periodoCampo;
+    const mostrar = (tipo === 'mes' && campo === 'mes') || (tipo === 'ano' && campo === 'ano') || (tipo === 'personalizado' && (campo === 'inicio' || campo === 'fim'));
+    el.hidden = !mostrar;
+  });
+}
+
+function aplicarPeriodoArquivo() {
+  const tipo = document.querySelector('.arquivo-periodo-tipo.active')?.dataset.periodoTipo || 'mes';
+  let filtro = { tipo, mes: '', ano: '', inicio: '', fim: '', resumo: '' };
+  if (tipo === 'mes') {
+    filtro.mes = $('arquivo-periodo-mes')?.value || '';
+    if (!filtro.mes) return mostrarStatus('Selecione um mês para filtrar o Arquivo', 'alerta');
+    const [ano, mes] = filtro.mes.split('-');
+    filtro.resumo = `Período: ${mes}/${ano}`;
+  } else if (tipo === 'ano') {
+    filtro.ano = String($('arquivo-periodo-ano')?.value || '').trim();
+    if (!/^\d{4}$/.test(filtro.ano)) return mostrarStatus('Informe um ano válido', 'alerta');
+    filtro.resumo = `Período: ${filtro.ano}`;
+  } else {
+    filtro.inicio = $('arquivo-periodo-inicio')?.value || '';
+    filtro.fim = $('arquivo-periodo-fim')?.value || '';
+    if (!filtro.inicio || !filtro.fim) return mostrarStatus('Informe data inicial e final', 'alerta');
+    if (filtro.inicio > filtro.fim) return mostrarStatus('A data inicial não pode ser maior que a final', 'alerta');
+    filtro.resumo = `Período: ${filtro.inicio.split('-').reverse().join('/')} até ${filtro.fim.split('-').reverse().join('/')}`;
+  }
+  state.arquivoPeriodo = filtro;
+  const resumo = $('arquivo-periodo-resumo');
+  if (resumo) { resumo.hidden = false; resumo.textContent = filtro.resumo; }
+  selecionarFiltroArquivo('todos');
+  renderizarServicosGlobais();
+}
+
+function servicoPassaPeriodoArquivo(item) {
+  const filtro = state.arquivoPeriodo || {};
+  if (!filtro.tipo) return true;
+  const data = dataBRParaDate(item.data);
+  if (!data) return false;
+  if (filtro.tipo === 'mes') {
+    const [ano, mes] = String(filtro.mes || '').split('-').map(Number);
+    return data.getFullYear() === ano && data.getMonth() === mes - 1;
+  }
+  if (filtro.tipo === 'ano') return data.getFullYear() === Number(filtro.ano);
+  const iso = dataLocalISO(data);
+  return iso >= filtro.inicio && iso <= filtro.fim;
+}
+
+function servicoPassaFiltroRapido(item, filtro) {
+  if (!filtro || filtro === 'todos') return true;
+  const status = String(item.status_pagamento || '').toLowerCase();
+  if (filtro === 'pendentes') return status !== 'pago';
+  if (filtro === 'pagos') return status === 'pago';
+
+  const data = dataBRParaDate(item.data);
+  if (!data) return false;
+  const hoje = new Date();
+  if (filtro === 'hoje') {
+    return data.getFullYear() === hoje.getFullYear() && data.getMonth() === hoje.getMonth() && data.getDate() === hoje.getDate();
+  }
+  if (filtro === 'mes') {
+    return data.getFullYear() === hoje.getFullYear() && data.getMonth() === hoje.getMonth();
+  }
+  return true;
+}
+
+function termoServicoGlobal(item) {
+  let pecasTexto = '';
+  try { pecasTexto = JSON.parse(item.pecas_trocadas || '[]').map((p) => p.nome).join(' '); } catch (_) {}
+  return [
+    item.numero_os,
+    item.placa,
+    item.nome_cliente,
+    item.telefone_cliente,
+    item.ddi_cliente,
+    item.ddd_cliente,
+    item.telefone_numero,
+    item.modelo,
+    item.ano,
+    item.cor,
+    item.combustivel,
+    item.servico,
+    pecasTexto,
+    item.forma_pagamento,
+    item.status_pagamento,
+  ].filter(Boolean).join(' ').toLowerCase();
+}
+
+async function carregarServicosGlobais(mostrarErro = true) {
+  const container = $('lista-servicos-global');
+  if (!container) return;
+  try {
+    state.servicosCache = await api.listarServicos();
+    renderizarServicosGlobais();
+  } catch (err) {
+    console.error(err);
+    if (mostrarErro) mostrarStatus('Erro ao carregar Arquivo de Serviços', 'erro');
+  }
+}
+
+function renderizarServicosGlobais() {
+  const container = $('lista-servicos-global');
+  if (!container) return;
+
+  const termo = String($('busca_servicos')?.value || '').trim().toLowerCase();
+  const filtro = document.querySelector('.servico-filter.active')?.dataset.servicoFiltro || 'todos';
+  const itens = (state.servicosCache || []).filter((item) => {
+    const passaTermo = !termo || termoServicoGlobal(item).includes(termo);
+    return passaTermo && servicoPassaFiltroRapido(item, filtro) && servicoPassaPeriodoArquivo(item);
+  });
+
+  container.innerHTML = '';
+  if (!itens.length) {
+    container.innerHTML = '<div class="servico-item arquivo-empty">Nenhum serviço encontrado no Arquivo.</div>';
+    return;
+  }
+
+  itens.forEach((item, index) => {
+    const total = numero(item.valor_total);
+    const pago = numero(item.valor_pago);
+    const mao = numero(item.valor_maodeobra);
+    const pecasTotal = numero(item.valor_pecas);
+    const restante = Math.max(0, total - pago);
+    const status = item.status_pagamento || 'pendente';
+    let pecasHTML = 'Nenhuma peça';
+    try {
+      const pecas = JSON.parse(item.pecas_trocadas || '[]');
+      if (pecas.length) pecasHTML = pecas.map((p) => `<div class="historico-peca"><span>${escapeHTML(p.nome)}</span><strong>${moeda(p.valor)}</strong></div>`).join('');
+    } catch (_) {}
+
+    const el = document.createElement('article');
+    el.className = 'arquivo-card servico-item';
+    el.dataset.id = item.id;
+    el.innerHTML = `
+      <div class="arquivo-card-header arquivo-compact-header">
+        <div class="arquivo-main-info">
+          <div class="history-meta-line"><span>${escapeHTML(item.data || '-')}</span><span class="badge-km">${escapeHTML(numeroOSVisual(item))}</span><span class="mini-plate">${escapeHTML(item.placa || '-')}</span></div>
+          <h3>${escapeHTML(item.nome_cliente || 'Cliente não informado')}</h3>
+          <p>${escapeHTML([item.modelo, item.ano, item.cor].filter(Boolean).join(' • ') || 'Veículo sem detalhes')}</p>
+          <p class="arquivo-servico-resumo">${escapeHTML(item.servico || 'Serviço sem descrição')}</p>
+        </div>
+        <div class="arquivo-card-right">
+          <strong>${moeda(total)}</strong>
+          <small class="history-restante">Restante: ${moeda(restante)}</small>
+          <span class="status-${escapeHTML(status)}">${escapeHTML(status.toUpperCase())}</span>
+        </div>
+      </div>
+      <div class="arquivo-details history-detail-grid" id="arquivo-detalhe-${index}" hidden>
+        <section class="history-detail-block history-description-block">
+          <small>Cliente e veículo</small>
+          <div class="history-payment-grid">
+            <div><span>Cliente</span><strong>${escapeHTML(item.nome_cliente || '-')}</strong></div>
+            <div><span>Telefone</span><strong>${escapeHTML(formatarTelefoneExibicao(item) || '-')}</strong></div>
+            <div><span>Placa</span><strong>${escapeHTML(item.placa || '-')}</strong></div>
+            <div><span>Modelo</span><strong>${escapeHTML([item.modelo, item.ano].filter(Boolean).join(' • ') || '-')}</strong></div>
+            <div><span>Cor</span><strong>${escapeHTML(item.cor || '-')}</strong></div>
+            <div><span>Combustível</span><strong>${escapeHTML(item.combustivel || 'Não informado')}</strong></div>
+            <div><span>KM</span><strong>${escapeHTML(item.km || '-')}</strong></div>
+            <div><span>OS</span><strong>${escapeHTML(numeroOSVisual(item))}</strong></div>
+          </div>
+        </section>
+        <section class="history-detail-block history-description-block"><small>Serviço</small><p>${escapeHTML(item.servico || 'Sem descrição')}</p></section>
+        <section class="history-detail-block"><small>Peças e componentes</small><div class="history-parts-list">${pecasHTML}</div></section>
+        <section class="history-detail-block history-payment-block"><small>Pagamento</small><div class="history-payment-grid"><div><span>Mão de obra</span><strong>${moeda(mao)}</strong></div><div><span>Peças</span><strong>${moeda(pecasTotal)}</strong></div><div><span>Total</span><strong>${moeda(total)}</strong></div><div><span>Pago</span><strong>${moeda(pago)}</strong></div><div class="history-restante"><span>Restante</span><strong>${moeda(restante)}</strong></div><div><span>Forma</span><strong>${escapeHTML(item.forma_pagamento || '-')}</strong></div><div><span>Situação</span><strong><span class="status-${escapeHTML(status)}">${escapeHTML(status.toUpperCase())}</span></strong></div></div></section>
+      </div>
+      <div class="historico-acoes arquivo-acoes">
+        <button type="button" class="btn-secondary arquivo-toggle">Ver detalhes</button>
+        <button type="button" class="btn-secondary btn-pdf-historico arquivo-pdf">PDF da OS</button>
+        ${status !== 'pago' ? '<button type="button" class="btn-receber arquivo-receber">Receber pagamento</button>' : ''}
+        <button type="button" class="btn-secondary arquivo-abrir-veiculo">Abrir veículo</button>
+      </div>
+    `;
+
+    el.querySelector('.arquivo-toggle')?.addEventListener('click', () => {
+      const detail = el.querySelector(`#arquivo-detalhe-${index}`);
+      if (!detail) return;
+      detail.hidden = !detail.hidden;
+      el.querySelector('.arquivo-toggle').textContent = detail.hidden ? 'Ver detalhes' : 'Fechar detalhes';
+    });
+    el.querySelector('.arquivo-pdf')?.addEventListener('click', () => gerarPDFHistorico(item));
+    el.querySelector('.arquivo-receber')?.addEventListener('click', () => receberPagamento(item.id, restante, item.numero_os || item.placa));
+    el.querySelector('.arquivo-abrir-veiculo')?.addEventListener('click', () => abrirPendencia(item.id, item.placa));
+    container.appendChild(el);
+  });
 }
 
 async function carregarPendentes() {
@@ -716,7 +1027,7 @@ async function carregarPendentes() {
       el.innerHTML = `
         <div class="pendencia-card-top">
           <span class="mini-plate">${escapeHTML(item.placa || '-')}</span>
-          <span class="pendencia-date">${escapeHTML(item.data || '')}</span>
+          <span class="pendencia-date">${escapeHTML(item.data || '')} • ${escapeHTML(numeroOSVisual(item))}</span>
         </div>
         <div class="pendencia-client-line">
           <strong>${escapeHTML(item.nome_cliente || 'Cliente não informado')}</strong>
@@ -768,6 +1079,7 @@ async function confirmarRecebimento() {
     fecharModalRecebimento();
     await carregarPendentes();
     if (state.veiculoAtual?.placa) await carregarHistorico(state.veiculoAtual.placa);
+    await carregarServicosGlobais(false);
     await atualizarFinanceiro();
     mostrarStatus(`Pagamento de ${moeda(valor)} registrado`, 'sucesso');
   } catch (err) { console.error(err); mostrarStatus(err.message || 'Erro ao receber pagamento', 'erro'); }
@@ -1225,10 +1537,20 @@ function abrirWhatsRapido() {
   window.open(`https://wa.me/${tel}`, '_blank');
 }
 
-function linhasPecasParaPDF() {
-  const linhas = [...state.listaPecas];
-  while (linhas.length < 10) linhas.push({ nome: '', valor: '' });
-  return linhas.slice(0, 10).map((p) => `
+function normalizarPecasPDF(pecasInput = state.listaPecas) {
+  if (Array.isArray(pecasInput)) return pecasInput;
+  try {
+    const parsed = JSON.parse(pecasInput || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function linhasPecasParaPDF(pecasInput = state.listaPecas, minimoLinhas = 10) {
+  const linhas = [...normalizarPecasPDF(pecasInput)];
+  while (linhas.length < minimoLinhas) linhas.push({ nome: '', valor: '' });
+  return linhas.slice(0, Math.max(minimoLinhas, linhas.length)).map((p) => `
     <tr>
       <td class="os-qtd">${p.nome ? '1' : '&nbsp;'}</td>
       <td>${escapeHTML(p.nome || '')}</td>
@@ -1240,7 +1562,7 @@ function linhasPecasParaPDF() {
 function servicosCabecalhoPDF() {
   const cfg = state.configOficina || {};
   const linhas = String(cfg.servicosCabecalho || '')
-    .split('\\n')
+    .split('\n')
     .map((linha) => linha.trim())
     .filter(Boolean);
   const fallback = ['Mecânica geral', 'Revisões', 'Freios', 'Suspensão', 'Injeção eletrônica'];
@@ -1251,36 +1573,66 @@ function servicosCabecalhoPDF() {
 }
 
 function numeroOSAtual() {
-  const id = state.osAtual?.id || state.ordemServicoAtual?.id || null;
-  if (!id) return 'ORÇAMENTO / PRÉVIA';
-  return `OS Nº ${String(id).padStart(6, '0')}`;
+  return numeroOSVisual(state.osAtual || state.ordemServicoAtual || null);
+}
+
+function numeroOrcamentoVisual() {
+  return 'ORÇAMENTO / PRÉVIA\nSem número definitivo';
+}
+
+function numeroOSDocumento(item = null, finalizado = false) {
+  const numero = item?.numero_os || item?.numeroOS || '';
+  if (numero) return `OS Nº ${numero}`;
+  if (finalizado && item?.id) return `OS Nº #${String(item.id).padStart(6, '0')}`;
+  return 'ORÇAMENTO / PRÉVIA';
+}
+
+function tituloDocumentoOS(item = null, finalizado = false) {
+  const numero = item?.numero_os || item?.numeroOS || '';
+  if (finalizado || numero) return 'ORDEM DE SERVIÇO';
+  return 'ORÇAMENTO / PRÉVIA';
+}
+
+function subtituloDocumentoOS(item = null, finalizado = false) {
+  const numero = item?.numero_os || item?.numeroOS || '';
+  if (numero) return `OS Nº ${numero}`;
+  if (finalizado && item?.id) return `OS Nº #${String(item.id).padStart(6, '0')}`;
+  return 'Prévia sem número definitivo';
 }
 
 function logoPDFMarkup() {
   const cfg = state.configOficina || {};
   if (state.logoOficina?.exists && state.logoOficina?.url) {
-    return `<img class="os-logo-img" src="${state.logoOficina.url}" alt="Logo da oficina" />`;
+    const logoUrl = new URL(state.logoOficina.url, window.location.origin).href;
+    return `<img class="os-logo-img" src="${logoUrl}" alt="Logo da oficina" />`;
   }
   return `<div class="os-logo-text"><strong>${escapeHTML(cfg.nome || 'OFICINA')}</strong><small>${escapeHTML(cfg.subtitulo || 'Mecânica Multimarcas')}</small></div>`;
 }
 
-function gerarPDFOrdemServico() {
-  if (!state.veiculoAtual) return mostrarStatus('Nenhum veículo carregado', 'alerta');
-  if (!validarPecasObrigatorias('gerar a OS em PDF')) return;
-
-  const totalPecas = numero($('valor_pecas').value);
-  const mao = numero($('valor_maodeobra').value);
-  const total = numero($('valor_total').value);
-  const pago = numero($('valor_pago').value);
+function abrirDocumentoOSPDF({ veiculo, servicoItem, pecas, finalizado = false }) {
+  const totalPecas = numero(servicoItem.valor_pecas);
+  const mao = numero(servicoItem.valor_maodeobra);
+  const total = numero(servicoItem.valor_total);
+  const pago = numero(servicoItem.valor_pago);
   const restante = Math.max(0, total - pago);
   const dataAgora = new Date();
-  const dataAtual = dataAgora.toLocaleDateString('pt-BR');
+  const dataAtual = servicoItem.data || dataAgora.toLocaleDateString('pt-BR');
   const horaAtual = dataAgora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  const servico = $('servico').value.trim();
+  const servico = String(servicoItem.servico || '').trim();
   const cfg = state.configOficina || {};
   const endereco = [cfg.rua, cfg.bairro].filter(Boolean).join(' • ');
   const cidadeCep = [cfg.cidade, cfg.cep ? `CEP: ${cfg.cep}` : ''].filter(Boolean).join(' • ');
   const docInfo = [cfg.cnpj ? `CNPJ: ${cfg.cnpj}` : '', cfg.telefone ? `Fone: ${cfg.telefone}` : ''].filter(Boolean).join(' • ');
+  const numeroDocumento = numeroOSDocumento(servicoItem, finalizado);
+  const tituloDocumento = tituloDocumentoOS(servicoItem, finalizado);
+  const subtituloDocumento = subtituloDocumentoOS(servicoItem, finalizado);
+  const formaPagamento = servicoItem.forma_pagamento || getFormaPagamento();
+  const km = servicoItem.km || $('km')?.value || veiculo?.km_atual || '';
+  const numeroLimpo = String(numeroDocumento || '').replace(/^OS Nº\s*/, '');
+  const campoDocumentoCliente = (finalizado || servicoItem.numero_os)
+    ? `<div class="os-field"><span class="os-label">OS Nº</span>${escapeHTML(numeroLimpo)}</div>`
+    : `<div class="os-field"><span class="os-label">Documento</span>Prévia sem número definitivo</div>`;
+
   const win = window.open('', '_blank', 'width=900,height=1100');
   if (!win) return mostrarStatus('Permita pop-ups para gerar a OS', 'alerta');
 
@@ -1288,7 +1640,7 @@ function gerarPDFOrdemServico() {
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>Ordem de Serviço - ${escapeHTML(state.veiculoAtual.placa || '')}</title>
+  <title>${escapeHTML(tituloDocumento)} - ${escapeHTML(veiculo?.placa || '')}</title>
   <style>
     :root { --ink:#111827; --line:#111827; --muted:#4b5563; --paper:#fff; --soft:#f3f4f6; }
     * { box-sizing: border-box; }
@@ -1303,10 +1655,11 @@ function gerarPDFOrdemServico() {
     .os-logo-text small { display:block; margin-top:4px; font-size: 12px; font-weight: 700; color: var(--muted); }
     .os-company { margin-top: 10px; font-size: 12px; line-height: 1.35; }
     .os-title { padding: 12px 14px; }
-    .os-title h1 { margin: 0 0 4px; font-size: 22px; text-align: center; letter-spacing:.4px; }
-    .os-number { text-align:center; font-size: 12px; font-weight: 800; margin-bottom: 7px; }
+    .os-title h1 { margin: 0 0 5px; font-size: 22px; text-align: center; letter-spacing:.4px; }
+    .os-number { text-align:center; font-size: 13px; font-weight: 900; margin-bottom: 4px; }
+    .os-date { text-align:center; font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 7px; }
     .os-title ul { margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.35; }
-    .os-line-grid { display: grid; grid-template-columns: 1.3fr .8fr; }
+    .os-line-grid { display: grid; grid-template-columns: 1.25fr .85fr; }
     .os-field { min-height: 34px; padding: 5px 8px; border-bottom: 2px solid var(--line); border-right: 2px solid var(--line); font-size: 13px; }
     .os-field:nth-child(2n) { border-right: 0; }
     .os-label { font-weight: 800; font-size: 10px; text-transform: uppercase; color: var(--muted); margin-right: 6px; }
@@ -1349,27 +1702,28 @@ function gerarPDFOrdemServico() {
           </div>
         </div>
         <div class="os-title">
-          <h1>ORDEM DE SERVIÇO</h1>
-          <div class="os-number">${escapeHTML(numeroOSAtual())} • ${dataAtual}</div>
+          <h1>${escapeHTML(tituloDocumento)}</h1>
+          <div class="os-number">${escapeHTML(subtituloDocumento)}</div>
+          <div class="os-date">DATA: ${escapeHTML(dataAtual)}</div>
           <ul>${servicosCabecalhoPDF()}</ul>
         </div>
       </div>
 
       <div class="os-line-grid">
-        <div class="os-field"><span class="os-label">Nome</span>${escapeHTML(state.veiculoAtual.nome_cliente || '')}</div>
-        <div class="os-field"><span class="os-label">Fone</span>${escapeHTML(formatarTelefoneExibicao(state.veiculoAtual))}</div>
-        <div class="os-field"><span class="os-label">End.</span></div>
+        <div class="os-field"><span class="os-label">Nome</span>${escapeHTML(veiculo?.nome_cliente || '')}</div>
+        <div class="os-field"><span class="os-label">Fone</span>${escapeHTML(formatarTelefoneExibicao(veiculo || {}))}</div>
         <div class="os-field"><span class="os-label">CPF/CNPJ</span></div>
+        ${campoDocumentoCliente}
       </div>
 
       <div class="os-car-grid">
-        <div class="os-field"><span class="os-label">Tipo/Modelo</span>${escapeHTML(state.veiculoAtual.modelo || '')}</div>
-        <div class="os-field"><span class="os-label">Cor</span>${escapeHTML(state.veiculoAtual.cor || '')}</div>
-        <div class="os-field"><span class="os-label">Placa</span>${escapeHTML(state.veiculoAtual.placa || '')}</div>
-        <div class="os-field"><span class="os-label">Ano</span>${escapeHTML(state.veiculoAtual.ano || '')}</div>
-        <div class="os-field"><span class="os-label">Data</span>${dataAtual}</div>
-        <div class="os-field"><span class="os-label">Quilometragem</span>${escapeHTML($('km').value || state.veiculoAtual.km_atual || '')}</div>
-        <div class="os-field"><span class="os-label">Combustível</span>${escapeHTML(state.veiculoAtual.combustivel || 'Não informado')}</div>
+        <div class="os-field"><span class="os-label">Tipo/Modelo</span>${escapeHTML(veiculo?.modelo || '')}</div>
+        <div class="os-field"><span class="os-label">Cor</span>${escapeHTML(veiculo?.cor || '')}</div>
+        <div class="os-field"><span class="os-label">Placa</span>${escapeHTML(veiculo?.placa || servicoItem.placa || '')}</div>
+        <div class="os-field"><span class="os-label">Ano</span>${escapeHTML(veiculo?.ano || '')}</div>
+        <div class="os-field"><span class="os-label">Data</span>${escapeHTML(dataAtual)}</div>
+        <div class="os-field"><span class="os-label">Quilometragem</span>${escapeHTML(km)}</div>
+        <div class="os-field"><span class="os-label">Combustível</span>${escapeHTML(veiculo?.combustivel || 'Não informado')}</div>
         <div class="os-field"><span class="os-label">Mecânico</span></div>
       </div>
 
@@ -1378,7 +1732,7 @@ function gerarPDFOrdemServico() {
         <thead><tr><th class="os-qtd">Qtd.</th><th>Descrição</th><th class="os-valor">Valor</th></tr></thead>
         <tbody>
           <tr><td class="os-qtd">-</td><td class="os-service-text">${escapeHTML(servico || 'Serviço não informado')}</td><td class="os-valor">${mao ? moeda(mao) : ''}</td></tr>
-          ${linhasPecasParaPDF()}
+          ${linhasPecasParaPDF(pecas)}
         </tbody>
       </table>
 
@@ -1395,11 +1749,11 @@ function gerarPDFOrdemServico() {
           <div class="os-total-row"><span>M.O. Mecânica</span><strong>${moeda(mao)}</strong></div>
           <div class="os-total-row"><span>Peças</span><strong>${moeda(totalPecas)}</strong></div>
           <div class="os-total-row os-grand"><span>TOTAL</span><strong>${moeda(total)}</strong></div>
-          <div class="os-payment-note">Pago: ${moeda(pago)}<br />Restante: ${moeda(restante)}<br />Forma: ${escapeHTML(getFormaPagamento())}</div>
+          <div class="os-payment-note">Pago: ${moeda(pago)}<br />Restante: ${moeda(restante)}<br />Forma: ${escapeHTML(formaPagamento || '-')}</div>
         </div>
       </div>
     </div>
-    <div class="os-footer"><span>Gerado pelo Sistema Oficina</span><span>${escapeHTML(numeroOSAtual())} • ${dataAtual} ${horaAtual}</span></div>
+    <div class="os-footer"><span>Gerado pelo Sistema Oficina</span><span>${escapeHTML(numeroDocumento)} • ${escapeHTML(dataAtual)} ${horaAtual}</span></div>
   </div>
   <script>window.onload = () => setTimeout(() => window.print(), 650);<\/script>
 </body>
@@ -1410,12 +1764,53 @@ function gerarPDFOrdemServico() {
   mostrarStatus('OS aberta para impressão/PDF', 'sucesso');
 }
 
+function gerarPDFOrdemServico() {
+  if (!state.veiculoAtual) return mostrarStatus('Nenhum veículo carregado', 'alerta');
+  if (!validarPecasObrigatorias('gerar o orçamento em PDF')) return;
+  const item = {
+    id: null,
+    numero_os: '',
+    data: new Date().toLocaleDateString('pt-BR'),
+    placa: state.veiculoAtual.placa,
+    km: $('km').value || state.veiculoAtual.km_atual || '',
+    servico: $('servico').value.trim(),
+    pecas_trocadas: JSON.stringify(state.listaPecas),
+    valor_pecas: numero($('valor_pecas').value),
+    valor_maodeobra: numero($('valor_maodeobra').value),
+    valor_total: numero($('valor_total').value),
+    valor_pago: numero($('valor_pago').value),
+    forma_pagamento: getFormaPagamento(),
+  };
+  abrirDocumentoOSPDF({ veiculo: state.veiculoAtual, servicoItem: item, pecas: state.listaPecas, finalizado: false });
+}
+
+function gerarPDFHistorico(item) {
+  const veiculo = {
+    ...(state.veiculoAtual || {}),
+    ...Object.fromEntries(Object.entries({
+      placa: item.placa,
+      nome_cliente: item.nome_cliente,
+      telefone_cliente: item.telefone_cliente,
+      ddi_cliente: item.ddi_cliente,
+      ddd_cliente: item.ddd_cliente,
+      telefone_numero: item.telefone_numero,
+      modelo: item.modelo,
+      ano: item.ano,
+      cor: item.cor,
+      combustivel: item.combustivel,
+      km_atual: item.km_atual || item.km,
+    }).filter(([, v]) => v !== undefined && v !== null && v !== '')),
+  };
+  const pecas = normalizarPecasPDF(item.pecas_trocadas);
+  abrirDocumentoOSPDF({ veiculo, servicoItem: item, pecas, finalizado: true });
+}
+
 function gerarWhatsApp() {
   if (!state.veiculoAtual) return mostrarStatus('Nenhum veículo carregado', 'alerta');
   if (!validarPecasObrigatorias('enviar o fechamento pelo WhatsApp')) return;
   const tel = telefoneWhatsapp(state.veiculoAtual);
   if (!tel) return mostrarStatus('Telefone não encontrado', 'alerta');
-  const texto = `Olá ${state.veiculoAtual.nome_cliente || ''}! Seu veículo está pronto.\nPlaca: ${state.veiculoAtual.placa}\nTotal: ${moeda(numero($('valor_total').value))}`;
+  const texto = `Olá ${state.veiculoAtual.nome_cliente || ''}! Seu veículo está pronto.\n${numeroOSAtual()}\nPlaca: ${state.veiculoAtual.placa}\nTotal: ${moeda(numero($('valor_total').value))}`;
   window.open(`https://wa.me/${tel}?text=${encodeURIComponent(texto)}`, '_blank');
 }
 function montarMensagemOrcamento() {
@@ -1424,6 +1819,7 @@ function montarMensagemOrcamento() {
     : 'Nenhuma peça adicionada';
   return `📋 ORÇAMENTO PARA APROVAÇÃO
 
+${numeroOrcamentoVisual()}
 👤 Cliente: ${state.veiculoAtual.nome_cliente || '-'}
 🚗 Veículo: ${state.veiculoAtual.modelo || '-'}
 🎨 Cor: ${state.veiculoAtual.cor || '-'}
@@ -1478,7 +1874,17 @@ function encaminharOrcamento() {
     abrirModalOrcamentoZero();
     return;
   }
+
+  // WhatsApp precisa ser a primeira janela aberta pelo clique do usuário.
+  // Se o PDF abrir antes, alguns navegadores bloqueiam o WhatsApp como pop-up secundário.
   enviarOrcamentoWhatsApp();
+  setTimeout(() => gerarPDFOrdemServico(), 250);
+}
+function abrirWhatsAppOSFechada(item = {}) {
+  const tel = telefoneWhatsapp(state.veiculoAtual || {});
+  if (!tel) return mostrarStatus('Telefone não encontrado para WhatsApp', 'alerta');
+  const texto = `Olá ${state.veiculoAtual?.nome_cliente || ''}! Seu veículo está pronto.\n${numeroOSVisual(item)}\nPlaca: ${state.veiculoAtual?.placa || '-'}\nTotal: ${moeda(numero(item.valor_total))}\nRestante: ${moeda(Math.max(0, numero(item.valor_total) - numero(item.valor_pago)))}`;
+  window.open(`https://wa.me/${tel}?text=${encodeURIComponent(texto)}`, '_blank');
 }
 function toggleTheme() { const isLight = document.body.classList.toggle('light-mode'); localStorage.setItem('theme', isLight ? 'light' : 'dark'); }
 
@@ -1520,7 +1926,7 @@ function bindEventos() {
   $('peca_valor')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') adicionarPeca(); });
   $('btn-encaminhar-orcamento')?.addEventListener('click', encaminharOrcamento);
   $('btn-gerar-pdf')?.addEventListener('click', gerarPDFOrdemServico);
-  $('btn-limpar-rascunho')?.addEventListener('click', limparRascunho);
+  $('btn-limpar-rascunho')?.addEventListener('click', abrirModalLimparOrcamento);
   $('btn-salvar-os')?.addEventListener('click', () => salvarOrdemAberta());
   $('btn-marcar-pronto')?.addEventListener('click', marcarOSPronta);
   $('btn-cancelar-os')?.addEventListener('click', cancelarOSAtual);
@@ -1531,6 +1937,11 @@ function bindEventos() {
   $('checkbox')?.addEventListener('change', toggleTheme);
   $('btn-cancelar-recebimento')?.addEventListener('click', fecharModalRecebimento);
   $('btn-confirmar-recebimento')?.addEventListener('click', confirmarRecebimento);
+  $('btn-cancelar-fechamento')?.addEventListener('click', fecharModalFechamento);
+  $('btn-fechar-somente')?.addEventListener('click', () => executarFechamento({ enviarOS: false }));
+  $('btn-fechar-enviar-os')?.addEventListener('click', () => executarFechamento({ enviarOS: true }));
+  $('btn-cancelar-limpar')?.addEventListener('click', fecharModalLimparOrcamento);
+  $('btn-confirmar-limpar')?.addEventListener('click', confirmarLimparOrcamento);
   $('btn-fechar-alerta')?.addEventListener('click', fecharModalAlerta);
   $('btn-limpar-peca-fechar')?.addEventListener('click', limparCamposPecaEFechar);
   $('btn-cancelar-atalho')?.addEventListener('click', fecharModalNovoAtalho);
@@ -1543,6 +1954,19 @@ function bindEventos() {
   $('btn-remover-logo')?.addEventListener('click', removerLogoOficina);
   $('config-logo-input')?.addEventListener('change', () => { const nome = $('config-logo-input')?.files?.[0]?.name; if (nome && $('config-logo-status')) $('config-logo-status').textContent = `Arquivo selecionado: ${nome}`; });
   document.querySelectorAll('.density-choice[data-density]').forEach((btn) => btn.addEventListener('click', () => definirDensidade(btn.dataset.density)));
+  $('busca_servicos')?.addEventListener('input', renderizarServicosGlobais);
+  document.querySelectorAll('.servico-filter[data-servico-filtro]').forEach((btn) => btn.addEventListener('click', () => {
+    selecionarFiltroArquivo(btn.dataset.servicoFiltro || 'todos');
+    if ((btn.dataset.servicoFiltro || 'todos') === 'todos') limparPeriodoArquivo({ renderizar: false });
+    renderizarServicosGlobais();
+  }));
+  $('btn-toggle-periodo-arquivo')?.addEventListener('click', () => {
+    const panel = $('arquivo-periodo-panel');
+    if (panel) panel.hidden = !panel.hidden;
+  });
+  document.querySelectorAll('.arquivo-periodo-tipo[data-periodo-tipo]').forEach((btn) => btn.addEventListener('click', () => aplicarTipoPeriodoArquivo(btn.dataset.periodoTipo || 'mes')));
+  $('btn-aplicar-periodo-arquivo')?.addEventListener('click', aplicarPeriodoArquivo);
+  $('btn-limpar-periodo-arquivo')?.addEventListener('click', () => limparPeriodoArquivo());
   window.addEventListener('resize', () => aplicarDensidade(densidadePreferida()));
   $('btn-fazer-backup')?.addEventListener('click', fazerBackupAgora);
   document.querySelectorAll('.payment-choice[data-pagamento]').forEach((btn) => btn.addEventListener('click', () => setFormaPagamento(btn.dataset.pagamento)));
