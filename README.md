@@ -434,3 +434,39 @@ Esta rodada ajusta o fluxo sem alterar a regra central de numeração:
 - PDF da OS no Arquivo continua usando dados existentes e não incrementa numeração.
 - Receber pagamento pelo Arquivo reutiliza o fluxo existente e atualiza pendências/financeiro.
 - Modal de fechamento recebeu pequeno polish textual para separar labels e valores.
+
+## Sprint 3 — Fotos / anexos por OS
+
+A Sprint 3 adiciona fotos/anexos vinculados ao serviço/OS finalizada.
+
+- As fotos pertencem ao serviço/OS, não ao veículo inteiro.
+- A galeria aparece no detalhe expandido do Histórico do veículo.
+- A mesma galeria aparece no detalhe expandido da tela Arquivo.
+- É possível adicionar múltiplas fotos por OS.
+- Tipos aceitos: JPG/JPEG, PNG e WEBP.
+- SVG e outros arquivos são bloqueados.
+- Limite: 5MB por foto e até 12 fotos por OS.
+- As fotos não entram no PDF/OS nesta sprint.
+- Gerar PDF não altera fotos, não altera `numero_os` e não muda dados do serviço.
+
+### Onde as fotos ficam
+
+Os arquivos físicos são salvos fora de `public/`, em:
+
+```txt
+uploads/os/
+```
+
+A rota do backend valida o serviço e o anexo antes de servir a imagem. A pasta `uploads/` não deve ser exposta diretamente como pasta pública.
+
+### Backup das fotos
+
+O backup manual atual salva o banco `oficina.db`.
+
+As fotos ficam como arquivos físicos em `uploads/os/`. Para backup completo, copie também a pasta:
+
+```txt
+uploads/
+```
+
+Sem essa pasta, o banco manterá os registros dos anexos, mas as imagens físicas não estarão disponíveis após restauração.

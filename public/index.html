@@ -314,6 +314,7 @@
               <button type="button" id="btn-toggle-periodo-arquivo" class="btn-secondary btn-periodo-arquivo">Período ▾</button>
             </div>
             <div id="arquivo-periodo-panel" class="arquivo-periodo-panel" hidden>
+              <div class="arquivo-periodo-title">Tipo de período</div>
               <div class="arquivo-periodo-tipos">
                 <button type="button" class="arquivo-periodo-tipo active" data-periodo-tipo="mes">Mês</button>
                 <button type="button" class="arquivo-periodo-tipo" data-periodo-tipo="ano">Ano</button>
@@ -430,7 +431,7 @@
                   <div class="backup-status-box"><span>Último backup</span><strong id="backup-ultimo">Nenhum backup encontrado</strong><small id="backup-pasta">Pasta: backups/</small></div>
                   <button id="btn-fazer-backup" class="btn-secondary">Fazer backup agora</button>
                 </div>
-                <div class="restore-help"><strong>Restauração manual:</strong><span>feche o app, copie um arquivo de <code>backups/</code>, renomeie para <code>oficina.db</code> e abra o app novamente.</span></div>
+                <div class="restore-help"><strong>Restauração manual:</strong><span>feche o app, copie um arquivo de <code>backups/</code>, renomeie para <code>oficina.db</code> e abra o app novamente.</span></div><div class="restore-help backup-upload-note"><strong>Fotos/anexos:</strong><span>as fotos ficam em <code>uploads/os/</code>. Para backup completo, copie também a pasta <code>uploads/</code>.</span></div>
               </div>
 
               <div class="card settings-panel">
@@ -481,6 +482,7 @@
       <div class="modal-overlay" id="modal-alerta-peca"><div class="modal-box"><h3 style="color:var(--accent-primary);margin-bottom:15px">⚠️ Peça não adicionada</h3><p id="msg-alerta-peca" style="margin-bottom:20px;line-height:1.5"></p><div class="modal-actions"><button id="btn-fechar-alerta" class="btn-cancelar">Voltar e Adicionar</button><button id="btn-limpar-peca-fechar" class="btn-confirmar" style="background:#6366f1">Descartar peça e continuar</button></div></div></div>
       <div class="modal-overlay" id="modal-novo-atalho"><div class="modal-box"><h2>Novo atalho rápido</h2><p class="modal-help">Digite o nome do serviço que deve aparecer na aba Serviço.</p><input type="text" id="modal-atalho-nome" placeholder="Ex: Limpeza de TBI" /><div class="modal-actions"><button id="btn-cancelar-atalho" class="btn-cancelar">Cancelar</button><button id="btn-confirmar-atalho" class="btn-confirmar">Adicionar</button></div></div></div>
       <div class="modal-overlay" id="modal-orcamento-zero"><div class="modal-box modal-warning"><h2>Orçamento sem valor</h2><p class="modal-help" id="modal-orcamento-zero-msg">O orçamento está sem peças e sem mão de obra. Deseja enviar mesmo assim?</p><div class="modal-actions"><button id="btn-cancelar-orcamento-zero" class="btn-cancelar">Voltar e corrigir</button><button id="btn-confirmar-orcamento-zero" class="btn-confirmar">Enviar mesmo assim</button></div></div></div>
+      <div class="modal-overlay" id="modal-foto-os"><div class="modal-box modal-foto-os"><div class="modal-foto-head"><div><h2 id="modal-foto-os-titulo">Foto do serviço</h2><p class="modal-help" id="modal-foto-os-info"></p></div><button type="button" id="btn-fechar-foto-os" class="btn-cancelar">Fechar</button></div><div class="modal-foto-body"><img id="modal-foto-os-img" alt="Foto do serviço" /></div></div></div>
     </div>
     <div id="status"></div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

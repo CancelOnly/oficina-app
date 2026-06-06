@@ -14,11 +14,13 @@ const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
 const BACKUP_DIR = path.join(ROOT_DIR, 'backups');
 const LOG_DIR = path.join(ROOT_DIR, 'logs');
 const UPLOAD_DIR = path.join(ROOT_DIR, 'uploads');
+const OS_UPLOAD_DIR = path.join(UPLOAD_DIR, 'os');
 const BACKUP_RETENTION = 60;
 
 fs.mkdirSync(BACKUP_DIR, { recursive: true });
 fs.mkdirSync(LOG_DIR, { recursive: true });
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+fs.mkdirSync(OS_UPLOAD_DIR, { recursive: true });
 
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
@@ -42,6 +44,49 @@ const uploadLogo = multer({
     cb(null, true);
   },
 });
+
+const OS_ANEXO_MAX_SIZE = 5 * 1024 * 1024;
+const OS_ANEXO_MAX_FILES = 12;
+const OS_ANEXO_MIMES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const OS_ANEXO_EXT_BY_MIME = {
+  'image/png': '.png',
+  'image/jpeg': '.jpg',
+  'image/webp': '.webp',
+};
+
+const uploadOSAnexos = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: OS_ANEXO_MAX_SIZE, files: OS_ANEXO_MAX_FILES },
+  fileFilter: (_req, file, cb) => {
+    if (!OS_ANEXO_MIMES.has(file.mimetype)) {
+      return cb(new Error('Tipo de arquivo inválido. Use JPG, PNG ou WEBP.'));
+    }
+    cb(null, true);
+  },
+});
+
+function safePathSegment(value = '') {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^A-Za-z0-9_-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 80) || 'sem-numero';
+}
+
+function caminhoSeguroDentro(baseDir, relativePath = '') {
+  const full = path.resolve(ROOT_DIR, relativePath);
+  const base = path.resolve(baseDir);
+  if (!full.startsWith(base + path.sep) && full !== base) return null;
+  return full;
+}
+
+function nomeSeguroAnexo(servico, file, index = 0) {
+  const ext = OS_ANEXO_EXT_BY_MIME[file.mimetype] || '.jpg';
+  const base = safePathSegment(servico.numero_os || `servico-${servico.id}`);
+  return `${base}-${Date.now()}-${index + 1}${ext}`;
+}
 
 function logoAtual() {
   const candidatos = fs.readdirSync(UPLOAD_DIR)
@@ -379,6 +424,23 @@ db.serialize(() => {
   addOrdemColumn('ano_os', 'INTEGER');
   addOrdemColumn('sequencia_os', 'INTEGER');
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS os_anexos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      os_id INTEGER NOT NULL,
+      servico_id INTEGER NOT NULL,
+      numero_os TEXT,
+      filename TEXT NOT NULL,
+      original_name TEXT,
+      mime_type TEXT,
+      size_bytes INTEGER,
+      relative_path TEXT NOT NULL,
+      legenda TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT
+    )
+  `);
+
   migrarNumerosOS();
 
   createIndex('idx_veiculos_placa', `CREATE INDEX IF NOT EXISTS idx_veiculos_placa ON veiculos(placa)`);
@@ -390,6 +452,8 @@ db.serialize(() => {
   createIndex('idx_ordens_data_abertura', `CREATE INDEX IF NOT EXISTS idx_ordens_data_abertura ON ordens_servico(data_abertura)`);
   createIndex('idx_ordens_ano_seq', `CREATE INDEX IF NOT EXISTS idx_ordens_ano_seq ON ordens_servico(ano_os, sequencia_os)`);
   createIndex('idx_servicos_ano_seq', `CREATE INDEX IF NOT EXISTS idx_servicos_ano_seq ON servicos(ano_os, sequencia_os)`);
+  createIndex('idx_os_anexos_servico', `CREATE INDEX IF NOT EXISTS idx_os_anexos_servico ON os_anexos(servico_id)`);
+  createIndex('idx_os_anexos_os', `CREATE INDEX IF NOT EXISTS idx_os_anexos_os ON os_anexos(os_id)`);
 });
 
 async function fazerBackup() {
@@ -860,6 +924,129 @@ function parseDataBR(valor) {
   d.setHours(0, 0, 0, 0);
   return d;
 }
+
+
+async function obterServicoParaAnexo(servicoId) {
+  const id = Number(servicoId);
+  if (!Number.isInteger(id) || id <= 0) return null;
+  return getAsync(`
+    SELECT s.*, v.nome_cliente, v.modelo, v.ano, v.cor, v.combustivel
+    FROM servicos s
+    LEFT JOIN veiculos v ON v.placa = s.placa
+    WHERE s.id = ?
+  `, [id]);
+}
+
+async function listarAnexosServico(servicoId) {
+  return allAsync(`
+    SELECT id, os_id, servico_id, numero_os, filename, original_name, mime_type, size_bytes, legenda, created_at, updated_at
+    FROM os_anexos
+    WHERE servico_id = ?
+    ORDER BY id ASC
+  `, [servicoId]);
+}
+
+app.get(['/api/servicos/:id/anexos', '/api/os/:id/anexos'], async (req, res) => {
+  try {
+    const servico = await obterServicoParaAnexo(req.params.id);
+    if (!servico) return res.status(404).json({ erro: 'Serviço/OS não encontrado' });
+    const anexos = await listarAnexosServico(servico.id);
+    res.json({ anexos, limite: OS_ANEXO_MAX_FILES });
+  } catch (err) {
+    logError('Erro ao listar anexos da OS', { id: req.params.id, err: err.message });
+    res.status(500).json({ erro: 'Erro ao listar fotos da OS' });
+  }
+});
+
+app.post(['/api/servicos/:id/anexos', '/api/os/:id/anexos'], (req, res) => {
+  uploadOSAnexos.array('fotos', OS_ANEXO_MAX_FILES)(req, res, async (err) => {
+    if (err) {
+      const mensagem = err.code === 'LIMIT_FILE_SIZE'
+        ? 'Cada foto deve ter no máximo 5MB.'
+        : err.code === 'LIMIT_FILE_COUNT'
+          ? `Envie no máximo ${OS_ANEXO_MAX_FILES} fotos por vez.`
+          : err.message;
+      logError('Erro no upload de fotos da OS', { id: req.params.id, err: mensagem });
+      return res.status(400).json({ erro: mensagem });
+    }
+
+    const salvos = [];
+    try {
+      const servico = await obterServicoParaAnexo(req.params.id);
+      if (!servico) return res.status(404).json({ erro: 'Serviço/OS não encontrado' });
+      const files = Array.isArray(req.files) ? req.files : [];
+      if (!files.length) return res.status(400).json({ erro: 'Nenhuma foto enviada' });
+
+      const existentes = await getAsync(`SELECT COUNT(*) AS total FROM os_anexos WHERE servico_id = ?`, [servico.id]);
+      const totalDepois = Number(existentes?.total || 0) + files.length;
+      if (totalDepois > OS_ANEXO_MAX_FILES) {
+        return res.status(400).json({ erro: `Limite de ${OS_ANEXO_MAX_FILES} fotos por OS atingido.` });
+      }
+
+      const pastaOS = safePathSegment(servico.numero_os || `servico-${servico.id}`);
+      const destinoDir = path.join(OS_UPLOAD_DIR, pastaOS);
+      fs.mkdirSync(destinoDir, { recursive: true });
+
+      for (const [index, file] of files.entries()) {
+        const ext = OS_ANEXO_EXT_BY_MIME[file.mimetype];
+        if (!ext) throw new Error('Tipo de arquivo inválido. Use JPG, PNG ou WEBP.');
+        const filename = nomeSeguroAnexo(servico, file, index);
+        const destino = path.join(destinoDir, filename);
+        fs.writeFileSync(destino, file.buffer);
+        salvos.push(destino);
+        const relativePath = path.relative(ROOT_DIR, destino).replace(/\\/g, '/');
+        await runAsync(`
+          INSERT INTO os_anexos (
+            os_id, servico_id, numero_os, filename, original_name, mime_type,
+            size_bytes, relative_path, legenda, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [servico.id, servico.id, servico.numero_os || '', filename, file.originalname || filename, file.mimetype, file.size, relativePath, '', new Date().toISOString()]);
+      }
+
+      logInfo('Fotos anexadas à OS', { servico_id: servico.id, numero_os: servico.numero_os, quantidade: files.length });
+      res.json({ success: true, anexos: await listarAnexosServico(servico.id) });
+    } catch (saveErr) {
+      for (const full of salvos) {
+        try { fs.unlinkSync(full); } catch (_) {}
+      }
+      logError('Erro ao salvar fotos da OS', { id: req.params.id, err: saveErr.message });
+      res.status(500).json({ erro: 'Erro ao salvar fotos da OS' });
+    }
+  });
+});
+
+app.get(['/api/servicos/:id/anexos/:anexoId/file', '/api/os/:id/anexos/:anexoId/file'], async (req, res) => {
+  try {
+    const servico = await obterServicoParaAnexo(req.params.id);
+    if (!servico) return res.status(404).send('Serviço/OS não encontrado');
+    const anexo = await getAsync(`SELECT * FROM os_anexos WHERE id = ? AND servico_id = ?`, [req.params.anexoId, servico.id]);
+    if (!anexo) return res.status(404).send('Foto não encontrada');
+    const full = caminhoSeguroDentro(OS_UPLOAD_DIR, anexo.relative_path);
+    if (!full || !fs.existsSync(full)) return res.status(404).send('Arquivo não encontrado');
+    res.type(anexo.mime_type || 'image/jpeg');
+    res.sendFile(full);
+  } catch (err) {
+    logError('Erro ao servir foto da OS', { id: req.params.id, anexo: req.params.anexoId, err: err.message });
+    res.status(500).send('Erro ao abrir foto');
+  }
+});
+
+app.delete(['/api/servicos/:id/anexos/:anexoId', '/api/os/:id/anexos/:anexoId'], async (req, res) => {
+  try {
+    const servico = await obterServicoParaAnexo(req.params.id);
+    if (!servico) return res.status(404).json({ erro: 'Serviço/OS não encontrado' });
+    const anexo = await getAsync(`SELECT * FROM os_anexos WHERE id = ? AND servico_id = ?`, [req.params.anexoId, servico.id]);
+    if (!anexo) return res.status(404).json({ erro: 'Foto não encontrada' });
+    const full = caminhoSeguroDentro(OS_UPLOAD_DIR, anexo.relative_path);
+    await runAsync(`DELETE FROM os_anexos WHERE id = ? AND servico_id = ?`, [req.params.anexoId, servico.id]);
+    if (full && fs.existsSync(full)) fs.unlinkSync(full);
+    logInfo('Foto removida da OS', { servico_id: servico.id, anexo_id: req.params.anexoId });
+    res.json({ success: true });
+  } catch (err) {
+    logError('Erro ao remover foto da OS', { id: req.params.id, anexo: req.params.anexoId, err: err.message });
+    res.status(500).json({ erro: 'Erro ao remover foto' });
+  }
+});
 
 app.get('/estatisticas', async (req, res) => {
   try {

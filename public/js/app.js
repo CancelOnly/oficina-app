@@ -713,6 +713,180 @@ function limparCamposPecaEFechar() {
   if (typeof acao === 'function') setTimeout(acao, 50);
 }
 
+
+const OS_ANEXO_TIPOS = ['image/jpeg', 'image/png', 'image/webp'];
+const OS_ANEXO_MAX_SIZE = 5 * 1024 * 1024;
+const OS_ANEXO_MAX_FILES = 12;
+
+function urlAnexoServico(servicoId, anexoId) {
+  return `${window.location.origin}/api/servicos/${encodeURIComponent(servicoId)}/anexos/${encodeURIComponent(anexoId)}/file`;
+}
+
+function validarArquivosFotosOS(files = []) {
+  const lista = Array.from(files || []);
+  if (!lista.length) return 'Selecione pelo menos uma foto.';
+  if (lista.length > OS_ANEXO_MAX_FILES) return `Selecione no máximo ${OS_ANEXO_MAX_FILES} fotos por vez.`;
+  for (const file of lista) {
+    if (!OS_ANEXO_TIPOS.includes(file.type)) return `Arquivo inválido: ${file.name}. Use JPG, PNG ou WEBP.`;
+    if (file.size > OS_ANEXO_MAX_SIZE) return `A foto ${file.name} passa de 5MB.`;
+  }
+  return null;
+}
+
+async function carregarAnexosServico(servicoId, containerId) {
+  const container = $(containerId);
+  if (!container || !servicoId) return;
+  container.innerHTML = '<span class="helper-text">Carregando fotos...</span>';
+  try {
+    const data = await api.listarAnexosServico(servicoId);
+    renderizarAnexosServico(servicoId, containerId, data.anexos || [], data.limite || OS_ANEXO_MAX_FILES);
+  } catch (err) {
+    console.error(err);
+    container.innerHTML = '<span class="helper-text status-inline-error">Não foi possível carregar as fotos.</span>';
+  }
+}
+
+function renderizarAnexosServico(servicoId, containerId, anexos = [], limite = OS_ANEXO_MAX_FILES) {
+  const container = $(containerId);
+  if (!container) return;
+  const restante = Math.max(0, Number(limite || OS_ANEXO_MAX_FILES) - anexos.length);
+  const cards = anexos.length
+    ? anexos.map((foto) => `
+        <article class="os-foto-card">
+          <button type="button" class="os-foto-thumb" data-foto-open="${escapeHTML(foto.id)}" aria-label="Abrir foto ${escapeHTML(foto.original_name || foto.filename)}">
+            <img src="${urlAnexoServico(servicoId, foto.id)}" alt="${escapeHTML(foto.original_name || 'Foto do serviço')}" loading="lazy" />
+          </button>
+          <div class="os-foto-meta">
+            <span title="${escapeHTML(foto.original_name || foto.filename)}">${escapeHTML(foto.original_name || foto.filename || 'Foto')}</span>
+            <button type="button" class="os-foto-remover" data-foto-remove="${escapeHTML(foto.id)}">Remover</button>
+          </div>
+        </article>
+      `).join('')
+    : '<div class="os-fotos-empty">Sem fotos anexadas.</div>';
+
+  container.innerHTML = `
+    <div class="os-fotos-toolbar">
+      <span>${anexos.length ? `${anexos.length} foto(s) anexada(s)` : 'Documente peças, antes/depois e problemas encontrados.'}</span>
+      <button type="button" class="btn-secondary btn-anexar-fotos" ${restante <= 0 ? 'disabled' : ''}>Adicionar fotos</button>
+    </div>
+    <div class="os-fotos-grid">${cards}</div>
+  `;
+
+  container.querySelector('.btn-anexar-fotos')?.addEventListener('click', () => selecionarFotosServico(servicoId, containerId));
+  container.querySelectorAll('[data-foto-open]').forEach((btn) => {
+    const id = btn.dataset.fotoOpen;
+    const foto = anexos.find((item) => String(item.id) === String(id));
+    btn.addEventListener('click', () => abrirModalFotoServico(servicoId, foto));
+  });
+  container.querySelectorAll('[data-foto-remove]').forEach((btn) => {
+    btn.addEventListener('click', () => removerFotoServico(servicoId, btn.dataset.fotoRemove, containerId));
+  });
+}
+
+function selecionarFotosServico(servicoId, containerId) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/jpeg,image/png,image/webp';
+  input.multiple = true;
+  input.addEventListener('change', async () => {
+    const files = Array.from(input.files || []);
+    const erro = validarArquivosFotosOS(files);
+    if (erro) return mostrarStatus(erro, 'alerta');
+    const container = $(containerId);
+    const textoAnterior = container?.innerHTML;
+    if (container) container.insertAdjacentHTML('afterbegin', '<div class="os-fotos-uploading">Enviando fotos...</div>');
+    try {
+      const data = await api.enviarAnexosServico(servicoId, files);
+      renderizarAnexosServico(servicoId, containerId, data.anexos || []);
+      mostrarStatus('Fotos anexadas à OS', 'sucesso');
+    } catch (err) {
+      if (container && textoAnterior) container.innerHTML = textoAnterior;
+      console.error(err);
+      mostrarStatus(err.message || 'Erro ao anexar fotos', 'erro');
+      await carregarAnexosServico(servicoId, containerId);
+    }
+  });
+  input.click();
+}
+
+function abrirModalFotoServico(servicoId, foto) {
+  if (!foto) return;
+  const modal = $('modal-foto-os');
+  const img = $('modal-foto-os-img');
+  const titulo = $('modal-foto-os-titulo');
+  const info = $('modal-foto-os-info');
+  const nomeArquivo = foto.original_name || foto.filename || 'foto-anexo';
+  const dataAnexo = foto.created_at ? new Date(foto.created_at).toLocaleString('pt-BR') : '';
+
+  if (!modal || !img) return window.open(urlAnexoServico(servicoId, foto.id), '_blank', 'noopener');
+
+  img.src = urlAnexoServico(servicoId, foto.id);
+  img.alt = 'Foto da OS';
+  if (titulo) titulo.textContent = 'Foto da OS';
+  if (info) {
+    info.innerHTML = `
+      ${dataAnexo ? `<span>Anexada em ${escapeHTML(dataAnexo)}</span>` : '<span>Anexo do serviço</span>'}
+      <span class="modal-foto-filename" title="${escapeHTML(nomeArquivo)}">${escapeHTML(nomeArquivo)}</span>
+    `;
+  }
+  modal.classList.add('active');
+}
+
+function fecharModalFotoServico() {
+  const modal = $('modal-foto-os');
+  const img = $('modal-foto-os-img');
+  const info = $('modal-foto-os-info');
+  if (img) {
+    img.src = '';
+    img.alt = 'Foto do serviço';
+  }
+  if (info) info.innerHTML = '';
+  modal?.classList.remove('active');
+}
+
+function configurarModalFotoServico() {
+  const modal = $('modal-foto-os');
+  if (!modal || modal.dataset.fotoModalBound === '1') return;
+  modal.dataset.fotoModalBound = '1';
+
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) fecharModalFotoServico();
+  });
+
+  modal.querySelector('.modal-box')?.addEventListener('click', (event) => {
+    event.stopPropagation();
+  });
+
+  $('btn-fechar-foto-os')?.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    fecharModalFotoServico();
+  });
+}
+
+async function removerFotoServico(servicoId, anexoId, containerId) {
+  if (!confirm('Remover esta foto da OS?')) return;
+  try {
+    await api.removerAnexoServico(servicoId, anexoId);
+    await carregarAnexosServico(servicoId, containerId);
+    mostrarStatus('Foto removida', 'sucesso');
+  } catch (err) {
+    console.error(err);
+    mostrarStatus(err.message || 'Erro ao remover foto', 'erro');
+  }
+}
+
+function secaoFotosServicoHTML(prefixo, servicoId) {
+  return `
+    <section class="history-detail-block os-fotos-block">
+      <small>Fotos do serviço</small>
+      <div id="fotos-${prefixo}-${escapeHTML(servicoId)}" class="os-fotos-galeria">
+        <span class="helper-text">Carregando fotos...</span>
+      </div>
+    </section>
+  `;
+}
+
 async function carregarHistorico(placa) {
   const historico = $('historico');
   if (!historico || !placa) return;
@@ -758,6 +932,7 @@ async function carregarHistorico(placa) {
               <div><span>Forma</span><strong>${escapeHTML(item.forma_pagamento || '-')}</strong></div>
             </div>
           </section>
+          ${secaoFotosServicoHTML('historico', item.id)}
         </div>`;
       const acoes = document.createElement('div');
       acoes.className = 'historico-acoes';
@@ -780,6 +955,7 @@ async function carregarHistorico(placa) {
 
       el.appendChild(acoes);
       historico.appendChild(el);
+      carregarAnexosServico(item.id, `fotos-historico-${item.id}`);
     });
   } catch (err) { console.error(err); mostrarStatus('Erro ao carregar histórico', 'erro'); }
 }
@@ -815,15 +991,33 @@ function selecionarFiltroArquivo(filtro = 'todos') {
   });
 }
 
+function atualizarResumoPeriodoArquivo() {
+  const resumo = $('arquivo-periodo-resumo');
+  if (!resumo) return;
+  const texto = String(state.arquivoPeriodo?.resumo || '').trim();
+  if (!texto) {
+    resumo.hidden = true;
+    resumo.innerHTML = '';
+    return;
+  }
+
+  resumo.hidden = false;
+  resumo.innerHTML = `<span>${escapeHTML(texto)}</span><button type="button" class="arquivo-periodo-chip-clear" data-limpar-periodo-chip aria-label="Limpar período">×</button>`;
+}
+
 function limparPeriodoArquivo({ renderizar = true } = {}) {
   state.arquivoPeriodo = { tipo: null, mes: '', ano: '', inicio: '', fim: '', resumo: '' };
-  const resumo = $('arquivo-periodo-resumo');
-  if (resumo) { resumo.hidden = true; resumo.textContent = ''; }
+  atualizarResumoPeriodoArquivo();
   if ($('arquivo-periodo-mes')) $('arquivo-periodo-mes').value = '';
   if ($('arquivo-periodo-ano')) $('arquivo-periodo-ano').value = '';
   if ($('arquivo-periodo-inicio')) $('arquivo-periodo-inicio').value = '';
   if ($('arquivo-periodo-fim')) $('arquivo-periodo-fim').value = '';
   if (renderizar) renderizarServicosGlobais();
+}
+
+function valorMesAtualArquivo() {
+  const data = new Date();
+  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
 }
 
 function aplicarTipoPeriodoArquivo(tipo = 'mes') {
@@ -833,6 +1027,9 @@ function aplicarTipoPeriodoArquivo(tipo = 'mes') {
     const mostrar = (tipo === 'mes' && campo === 'mes') || (tipo === 'ano' && campo === 'ano') || (tipo === 'personalizado' && (campo === 'inicio' || campo === 'fim'));
     el.hidden = !mostrar;
   });
+
+  if (tipo === 'mes' && $('arquivo-periodo-mes') && !$('arquivo-periodo-mes').value) $('arquivo-periodo-mes').value = valorMesAtualArquivo();
+  if (tipo === 'ano' && $('arquivo-periodo-ano') && !$('arquivo-periodo-ano').value) $('arquivo-periodo-ano').value = String(new Date().getFullYear());
 }
 
 function aplicarPeriodoArquivo() {
@@ -842,7 +1039,9 @@ function aplicarPeriodoArquivo() {
     filtro.mes = $('arquivo-periodo-mes')?.value || '';
     if (!filtro.mes) return mostrarStatus('Selecione um mês para filtrar o Arquivo', 'alerta');
     const [ano, mes] = filtro.mes.split('-');
-    filtro.resumo = `Período: ${mes}/${ano}`;
+    const dataMes = new Date(Number(ano), Number(mes) - 1, 1);
+    const nomeMes = dataMes.toLocaleDateString('pt-BR', { month: 'long' });
+    filtro.resumo = `Período: ${nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1)}/${ano}`;
   } else if (tipo === 'ano') {
     filtro.ano = String($('arquivo-periodo-ano')?.value || '').trim();
     if (!/^\d{4}$/.test(filtro.ano)) return mostrarStatus('Informe um ano válido', 'alerta');
@@ -855,9 +1054,9 @@ function aplicarPeriodoArquivo() {
     filtro.resumo = `Período: ${filtro.inicio.split('-').reverse().join('/')} até ${filtro.fim.split('-').reverse().join('/')}`;
   }
   state.arquivoPeriodo = filtro;
-  const resumo = $('arquivo-periodo-resumo');
-  if (resumo) { resumo.hidden = false; resumo.textContent = filtro.resumo; }
-  selecionarFiltroArquivo('todos');
+  atualizarResumoPeriodoArquivo();
+  const filtroAtual = document.querySelector('.servico-filter.active')?.dataset.servicoFiltro || 'todos';
+  if (filtroAtual === 'hoje' || filtroAtual === 'mes') selecionarFiltroArquivo('todos');
   renderizarServicosGlobais();
 }
 
@@ -991,6 +1190,7 @@ function renderizarServicosGlobais() {
         <section class="history-detail-block history-description-block"><small>Serviço</small><p>${escapeHTML(item.servico || 'Sem descrição')}</p></section>
         <section class="history-detail-block"><small>Peças e componentes</small><div class="history-parts-list">${pecasHTML}</div></section>
         <section class="history-detail-block history-payment-block"><small>Pagamento</small><div class="history-payment-grid"><div><span>Mão de obra</span><strong>${moeda(mao)}</strong></div><div><span>Peças</span><strong>${moeda(pecasTotal)}</strong></div><div><span>Total</span><strong>${moeda(total)}</strong></div><div><span>Pago</span><strong>${moeda(pago)}</strong></div><div class="history-restante"><span>Restante</span><strong>${moeda(restante)}</strong></div><div><span>Forma</span><strong>${escapeHTML(item.forma_pagamento || '-')}</strong></div><div><span>Situação</span><strong><span class="status-${escapeHTML(status)}">${escapeHTML(status.toUpperCase())}</span></strong></div></div></section>
+        ${secaoFotosServicoHTML('arquivo', item.id)}
       </div>
       <div class="historico-acoes arquivo-acoes">
         <button type="button" class="btn-secondary arquivo-toggle">Ver detalhes</button>
@@ -1010,6 +1210,7 @@ function renderizarServicosGlobais() {
     el.querySelector('.arquivo-receber')?.addEventListener('click', () => receberPagamento(item.id, restante, item.numero_os || item.placa));
     el.querySelector('.arquivo-abrir-veiculo')?.addEventListener('click', () => abrirPendencia(item.id, item.placa));
     container.appendChild(el);
+    carregarAnexosServico(item.id, `fotos-arquivo-${item.id}`);
   });
 }
 
@@ -1953,16 +2154,23 @@ function bindEventos() {
   $('btn-enviar-logo')?.addEventListener('click', enviarLogoOficina);
   $('btn-remover-logo')?.addEventListener('click', removerLogoOficina);
   $('config-logo-input')?.addEventListener('change', () => { const nome = $('config-logo-input')?.files?.[0]?.name; if (nome && $('config-logo-status')) $('config-logo-status').textContent = `Arquivo selecionado: ${nome}`; });
+  configurarModalFotoServico();
+  $('arquivo-periodo-resumo')?.addEventListener('click', (event) => {
+    if (event.target.closest('[data-limpar-periodo-chip]')) limparPeriodoArquivo();
+  });
   document.querySelectorAll('.density-choice[data-density]').forEach((btn) => btn.addEventListener('click', () => definirDensidade(btn.dataset.density)));
   $('busca_servicos')?.addEventListener('input', renderizarServicosGlobais);
   document.querySelectorAll('.servico-filter[data-servico-filtro]').forEach((btn) => btn.addEventListener('click', () => {
-    selecionarFiltroArquivo(btn.dataset.servicoFiltro || 'todos');
-    if ((btn.dataset.servicoFiltro || 'todos') === 'todos') limparPeriodoArquivo({ renderizar: false });
+    const filtro = btn.dataset.servicoFiltro || 'todos';
+    selecionarFiltroArquivo(filtro);
+    if (['todos', 'hoje', 'mes'].includes(filtro)) limparPeriodoArquivo({ renderizar: false });
     renderizarServicosGlobais();
   }));
   $('btn-toggle-periodo-arquivo')?.addEventListener('click', () => {
     const panel = $('arquivo-periodo-panel');
-    if (panel) panel.hidden = !panel.hidden;
+    if (!panel) return;
+    panel.hidden = !panel.hidden;
+    if (!panel.hidden) aplicarTipoPeriodoArquivo(document.querySelector('.arquivo-periodo-tipo.active')?.dataset.periodoTipo || 'mes');
   });
   document.querySelectorAll('.arquivo-periodo-tipo[data-periodo-tipo]').forEach((btn) => btn.addEventListener('click', () => aplicarTipoPeriodoArquivo(btn.dataset.periodoTipo || 'mes')));
   $('btn-aplicar-periodo-arquivo')?.addEventListener('click', aplicarPeriodoArquivo);
@@ -1986,7 +2194,11 @@ function bindEventos() {
     });
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.active').forEach((m) => m.classList.remove('active'));
+    if (e.key !== 'Escape') return;
+    if ($('modal-foto-os')?.classList.contains('active')) fecharModalFotoServico();
+    document.querySelectorAll('.modal-overlay.active').forEach((m) => {
+      if (m.id !== 'modal-foto-os') m.classList.remove('active');
+    });
   });
 }
 

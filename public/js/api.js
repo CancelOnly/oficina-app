@@ -63,4 +63,11 @@ export const api = {
   consultarLogo: () => request('/api/logo'),
   enviarLogo: (arquivo) => { const form = new FormData(); form.append('logo', arquivo); return requestForm('/api/logo', form); },
   removerLogo: () => request('/api/logo', { method: 'DELETE' }),
+  listarAnexosServico: (id) => request(`/api/servicos/${id}/anexos`),
+  enviarAnexosServico: (id, arquivos) => {
+    const form = new FormData();
+    Array.from(arquivos || []).forEach((arquivo) => form.append('fotos', arquivo));
+    return requestForm(`/api/servicos/${id}/anexos`, form);
+  },
+  removerAnexoServico: (servicoId, anexoId) => request(`/api/servicos/${servicoId}/anexos/${anexoId}`, { method: 'DELETE' }),
 };
